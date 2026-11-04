@@ -17,4 +17,6 @@ router.use('/pedidocarrito', require('./pedidocarrito.routes'));
 
 router.use('/profesores', require('./profesores.routes'));
 
+router.use('/auth', require('./auth.routes'));
+
 module.exports = router;
