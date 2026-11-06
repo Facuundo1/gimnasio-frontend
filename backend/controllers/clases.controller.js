@@ -1,6 +1,14 @@
 const Modelo = require('../models/clases.model');
 
-const OBLIGATORIOS = ["id_gimnasio"];
+const OBLIGATORIOS = [
+  "nombre_clase",
+  "capacidad",
+  "fecha_clase",
+  "hora_clase",
+  "id_gimnasio",
+  "profesor_id"
+];
+
 const faltantes = (body) =>
   OBLIGATORIOS.filter((c) => body[c] === undefined || body[c] === '');
 
