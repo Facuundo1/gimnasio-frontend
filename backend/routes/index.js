@@ -6,7 +6,6 @@ router.use('/usuarios', require('./usuarios.routes'));
 router.use('/productos', require('./productos.routes'));
 router.use('/reservas', require('./reservas.routes'));
 // router.use('/pedidos', require('./pedidos.routes'));
-
 router.use('/detallepedido', require('./detallepedido.routes'));
 
 router.use('/gimnasio', require('./gimnasio.routes'));
