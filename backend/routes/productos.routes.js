@@ -1,10 +1,11 @@
 const router = require('express').Router();
 const c = require('../controllers/productos.controller');
+const { verificarToken, permitirRoles } = require('../middleware/auth');
 
-router.get('/', c.listar);
-router.get('/:id', c.obtener);
-router.post('/', c.crear);
-router.put('/:id', c.actualizar);
-router.delete('/:id', c.eliminar);
+router.get('/', verificarToken, c.listar);
+router.get('/:id', verificarToken, c.obtener);
+router.post('/', verificarToken, permitirRoles('admin'), c.crear);
+router.put('/:id', verificarToken, permitirRoles('admin'), c.actualizar);
+router.delete('/:id', verificarToken, permitirRoles('admin'), c.eliminar);
 
 module.exports = router;

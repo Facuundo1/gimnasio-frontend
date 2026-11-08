@@ -1,4 +1,5 @@
 const Modelo = require('../models/reservas.model');
+const Usuario = require('../models/usuarios.model');
 
 // Campos obligatorios para crear o actualizar una reserva
 const OBLIGATORIOS = ["id_usuarios", "id_clase"];
@@ -43,6 +44,14 @@ exports.crear = async (req, res, next) => {
     if (f.length) {
       return res.status(400).json({
         error: 'Faltan campos: ' + f.join(', ')
+      });
+    }
+    // Verificar si el usuario existe
+    const usuario = await Usuario.obtenerPorId(req.body.id_usuarios);
+
+    if (!usuario) {
+      return res.status(404).json({
+        error: 'El usuario no existe'
       });
     }
 
@@ -90,7 +99,6 @@ exports.crear = async (req, res, next) => {
 };
 
 // Actualizar una reserva
-// Actualizar una reserva
 exports.actualizar = async (req, res, next) => {
   try {
     const f = faltantes(req.body);
@@ -101,7 +109,14 @@ exports.actualizar = async (req, res, next) => {
         error: 'Faltan campos: ' + f.join(', ')
       });
     }
+    // Verificar si el usuario existe
+    const usuario = await Usuario.obtenerPorId(req.body.id_usuarios);
 
+    if (!usuario) {
+      return res.status(404).json({
+        error: 'El usuario no existe'
+      });
+    }
     // 2. Verificar si la reserva existe
     const reserva = await Modelo.obtenerPorId(req.params.id);
 
@@ -131,15 +146,13 @@ exports.actualizar = async (req, res, next) => {
     }
 
     // 4. Evitar reservas activas duplicadas
-    const existe = await Modelo.existeReservaActiva(
+    const existe = await Modelo.existeOtraReservaActiva(
       req.body.id_usuarios,
-      req.body.id_clase
+      req.body.id_clase,
+      req.params.id
     );
 
-    if (
-      existe &&
-      Number(req.body.id_usuarios) !== Number(reserva.id_usuarios)
-    ) {
+    if (existe) {
       return res.status(409).json({
         error: 'El usuario ya tiene una reserva activa para esta clase'
       });

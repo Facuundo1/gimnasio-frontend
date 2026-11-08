@@ -1,12 +1,22 @@
 const db = require('../db');
 
 exports.obtenerTodos = async () => {
-  const [filas] = await db.query('SELECT * FROM usuarios');
+  const [filas] = await db.query(
+    `SELECT id_usuarios, nombre_usuarios, apellido_usuarios,
+            correo_usuarios, telefono, rol, id_gimnasio
+     FROM usuarios`
+  );
   return filas;
 };
 
 exports.obtenerPorId = async (id) => {
-  const [filas] = await db.query('SELECT * FROM usuarios WHERE id_usuarios = ?', [id]);
+  const [filas] = await db.query(
+    `SELECT id_usuarios, nombre_usuarios, apellido_usuarios,
+            correo_usuarios, telefono, rol, id_gimnasio
+     FROM usuarios
+     WHERE id_usuarios = ?`,
+    [id]
+  );
   return filas[0];
 };
 

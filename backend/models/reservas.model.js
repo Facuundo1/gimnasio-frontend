@@ -23,6 +23,20 @@ exports.existeReservaActiva = async (idUsuario, idClase) => {
   return filas.length > 0;
 };
 
+exports.existeOtraReservaActiva = async (idUsuario, idClase, idReserva) => {
+  const [filas] = await db.query(
+    `SELECT id_reserva
+     FROM reservas
+     WHERE id_usuarios = ?
+     AND id_clase = ?
+     AND estado_reserva = 'Activa'
+     AND id_reserva <> ?`,
+    [idUsuario, idClase, idReserva]
+  );
+
+  return filas.length > 0;
+};
+
 exports.tieneCupo = async (idClase) => {
   const [filas] = await db.query(
     `SELECT
