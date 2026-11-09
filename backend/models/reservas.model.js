@@ -10,6 +10,16 @@ exports.obtenerPorId = async (id) => {
   return filas[0];
 };
 
+// Obtener reservas de un usuario
+exports.obtenerPorUsuario = async (idUsuario) => {
+  const [filas] = await db.query(
+    'SELECT * FROM reservas WHERE id_usuarios = ?',
+    [idUsuario]
+  );
+
+  return filas;
+};
+
 exports.existeReservaActiva = async (idUsuario, idClase) => {
   const [filas] = await db.query(
     `SELECT id_reserva

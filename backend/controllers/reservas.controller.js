@@ -10,10 +10,17 @@ const faltantes = (body) =>
     (campo) => body[campo] === undefined || body[campo] === ''
   );
 
-// Obtener todas las reservas
+// Obtener reservas
 exports.listar = async (req, res, next) => {
   try {
-    const reservas = await Modelo.obtenerTodos();
+    let reservas;
+
+    if (req.usuario.rol === 'usuario') {
+      reservas = await Modelo.obtenerPorUsuario(req.usuario.id);
+    } else {
+      reservas = await Modelo.obtenerTodos();
+    }
+
     res.json(reservas);
   } catch (err) {
     next(err);
@@ -26,10 +33,23 @@ exports.obtener = async (req, res, next) => {
     const reserva = await Modelo.obtenerPorId(req.params.id);
 
     if (!reserva) {
-      return res.status(404).json({ error: 'Reserva no encontrada' });
+      return res.status(404).json({
+        error: 'Reserva no encontrada'
+      });
+    }
+
+    // El usuario solo puede consultar su propia reserva
+    if (
+      req.usuario.rol === 'usuario' &&
+      Number(reserva.id_usuarios) !== Number(req.usuario.id)
+    ) {
+      return res.status(403).json({
+        error: 'No tenés permisos para consultar esta reserva'
+      });
     }
 
     res.json(reserva);
+
   } catch (err) {
     next(err);
   }
@@ -103,21 +123,23 @@ exports.actualizar = async (req, res, next) => {
   try {
     const f = faltantes(req.body);
 
-    // 1. Validar campos obligatorios
+    // Validar campos obligatorios
     if (f.length) {
       return res.status(400).json({
         error: 'Faltan campos: ' + f.join(', ')
       });
     }
     // Verificar si el usuario existe
-    const usuario = await Usuario.obtenerPorId(req.body.id_usuarios);
+    const idUsuario = req.usuario.rol === 'usuario'
+      ? req.usuario.id
+      : req.body.id_usuarios;
 
     if (!usuario) {
       return res.status(404).json({
         error: 'El usuario no existe'
       });
     }
-    // 2. Verificar si la reserva existe
+    // Verificar si la reserva existe
     const reserva = await Modelo.obtenerPorId(req.params.id);
 
     if (!reserva) {
@@ -126,7 +148,17 @@ exports.actualizar = async (req, res, next) => {
       });
     }
 
-    // 3. Verificar si la clase existe y tiene cupos
+    // El usuario solo puede modificar su propia reserva
+    if (
+      req.usuario.rol === 'usuario' &&
+      Number(reserva.id_usuarios) !== Number(req.usuario.id)
+    ) {
+      return res.status(403).json({
+        error: 'No tenés permisos para modificar esta reserva'
+      });
+    }
+
+    // Verificar si la clase existe y tiene cupos
     const tieneCupo = await Modelo.tieneCupo(req.body.id_clase);
 
     if (tieneCupo === null) {
@@ -145,9 +177,8 @@ exports.actualizar = async (req, res, next) => {
       });
     }
 
-    // 4. Evitar reservas activas duplicadas
     const existe = await Modelo.existeOtraReservaActiva(
-      req.body.id_usuarios,
+      idUsuario,
       req.body.id_clase,
       req.params.id
     );
@@ -158,7 +189,7 @@ exports.actualizar = async (req, res, next) => {
       });
     }
 
-    // 5. Actualizar la reserva
+    // Actualizar la reserva
     const filas = await Modelo.actualizar(req.params.id, req.body);
 
     res.json({
@@ -173,6 +204,24 @@ exports.actualizar = async (req, res, next) => {
 // Cancelar una reserva
 exports.cancelar = async (req, res, next) => {
   try {
+    const reserva = await Modelo.obtenerPorId(req.params.id);
+
+    if (!reserva) {
+      return res.status(404).json({
+        error: 'Reserva no encontrada'
+      });
+    }
+
+    // El usuario solo puede cancelar su propia reserva
+    if (
+      req.usuario.rol === 'usuario' &&
+      Number(reserva.id_usuarios) !== Number(req.usuario.id)
+    ) {
+      return res.status(403).json({
+        error: 'No tenés permisos para cancelar esta reserva'
+      });
+    }
+
     const filas = await Modelo.cancelar(req.params.id);
 
     if (!filas) {
@@ -181,7 +230,10 @@ exports.cancelar = async (req, res, next) => {
       });
     }
 
-    res.json({ mensaje: 'Reserva cancelada correctamente' });
+    res.json({
+      mensaje: 'Reserva cancelada correctamente'
+    });
+
   } catch (err) {
     next(err);
   }
