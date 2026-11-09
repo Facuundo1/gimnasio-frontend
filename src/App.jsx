@@ -1,122 +1,80 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import AuthProvider from './features/auth/AuthProvider';
+import { PublicOnly, RequireRole } from './features/auth/RouteGuards';
+import { ToastProvider } from './components/ui';
+import AppLayout from './components/layout/AppLayout';
+import { ROLES } from './lib/roles';
 
-function App() {
-  const [count, setCount] = useState(0)
+import Login from './pages/public/Login';
+import Register from './pages/public/Register';
+import RegisterGym from './pages/public/RegisterGym';
+import NotFound from './pages/public/NotFound';
 
+import UserHome from './pages/user/UserHome';
+import UserClasses from './pages/user/UserClasses';
+import UserMembership from './pages/user/UserMembership';
+import UserReservations from './pages/user/UserReservations';
+import UserStore from './pages/user/UserStore';
+
+import AdminDashboard from './pages/admin/AdminDashboard';
+import Members from './pages/admin/Members';
+import AdminClasses from './pages/admin/AdminClasses';
+import Profesores from './pages/admin/Profesores';
+import Finance from './pages/admin/Finance';
+import ProductsAdmin from './pages/admin/ProductsAdmin';
+
+import SuperDashboard from './pages/superadmin/SuperDashboard';
+import Gyms from './pages/superadmin/Gyms';
+import Admins from './pages/superadmin/Admins';
+import System from './pages/superadmin/System';
+
+export default function App() {
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <BrowserRouter>
+      <AuthProvider>
+        <ToastProvider>
+          <Routes>
+            <Route element={<PublicOnly />}>
+              <Route path="/login" element={<Login />} />
+              <Route path="/registro" element={<Register />} />
+              <Route path="/registrar-gimnasio" element={<RegisterGym />} />
+            </Route>
 
-      <div className="ticks"></div>
+            <Route element={<RequireRole roles={[ROLES.USER]} />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<UserHome />} />
+                <Route path="clases" element={<UserClasses />} />
+                <Route path="membresia" element={<UserMembership />} />
+                <Route path="reservas" element={<UserReservations />} />
+                <Route path="tienda" element={<UserStore />} />
+              </Route>
+            </Route>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+            <Route element={<RequireRole roles={[ROLES.ADMIN]} />}>
+              <Route path="admin" element={<AppLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="miembros" element={<Members />} />
+                <Route path="clases" element={<AdminClasses />} />
+                <Route path="profesores" element={<Profesores />} />
+                <Route path="finanzas" element={<Finance />} />
+                <Route path="tienda" element={<ProductsAdmin />} />
+              </Route>
+            </Route>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+            <Route element={<RequireRole roles={[ROLES.SUPERADMIN]} />}>
+              <Route path="superadmin" element={<AppLayout />}>
+                <Route index element={<SuperDashboard />} />
+                <Route path="gimnasios" element={<Gyms />} />
+                <Route path="admins" element={<Admins />} />
+                <Route path="sistema" element={<System />} />
+                <Route path="tienda" element={<ProductsAdmin />} />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ToastProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
-
-export default App
