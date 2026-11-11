@@ -9,6 +9,13 @@ exports.obtenerPorId = async (id) => {
   const [filas] = await db.query('SELECT * FROM reservas WHERE id_reserva = ?', [id]);
   return filas[0];
 };
+exports.obtenerPorUsuario = async (idUsuario) => {
+  const [filas] = await db.query(
+    'SELECT * FROM reservas WHERE id_usuarios = ?',
+    [idUsuario]
+  );
+  return filas;
+};
 
 exports.existeReservaActiva = async (idUsuario, idClase) => {
   const [filas] = await db.query(

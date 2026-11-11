@@ -25,7 +25,7 @@ const validar = (b = {}) => {
 
 exports.listar = async (req, res, next) => {
   try {
-    res.json(await Modelo.obtenerTodos());
+    res.json(await Modelo.obtenerTodos(req.usuario));
   } catch (err) { next(err); }
 };
 
@@ -33,7 +33,7 @@ exports.obtener = async (req, res, next) => {
   try {
     if (!idValido(req.params.id))
       return res.status(400).json({ error: 'El id no es válido' });
-    const item = await Modelo.obtenerPorId(req.params.id);
+    const item = await Modelo.obtenerPorId(req.params.id, req.usuario);
     if (!item) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(item);
   } catch (err) { next(err); }
@@ -54,7 +54,7 @@ exports.actualizar = async (req, res, next) => {
       return res.status(400).json({ error: 'El id no es válido' });
     const errores = validar(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
-    const filas = await Modelo.actualizar(req.params.id, req.body);
+    const filas = await Modelo.actualizar(req.params.id, req.body, req.usuario);
     if (!filas) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json({ mensaje: 'Producto actualizado correctamente' });
   } catch (err) { next(err); }
@@ -64,7 +64,7 @@ exports.eliminar = async (req, res, next) => {
   try {
     if (!idValido(req.params.id))
       return res.status(400).json({ error: 'El id no es válido' });
-    const filas = await Modelo.eliminar(req.params.id);
+    const filas = await Modelo.eliminar(req.params.id, req.usuario);
     if (!filas) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json({ mensaje: 'Producto eliminado correctamente' });
   } catch (err) { next(err); }

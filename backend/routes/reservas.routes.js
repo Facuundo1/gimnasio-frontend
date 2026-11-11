@@ -2,6 +2,7 @@ const router = require('express').Router();
 const c = require('../controllers/reservas.controller');
 const { verificarToken, permitirRoles } = require('../middleware/auth');
 
+router.use(verificarToken);
 // Consultas: cada usuario ve sus propias reservas
 router.get('/', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.listar);
 

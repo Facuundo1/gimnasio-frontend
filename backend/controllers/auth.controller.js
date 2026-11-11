@@ -12,15 +12,10 @@ const rolDe = (u) => u[COL_ROL] || 'usuario';
 
 const firmarToken = (u) =>
   jwt.sign(
-    {
-      id: u[COL_ID],
-      rol: rolDe(u),
-      id_gimnasio: u.id_gimnasio ?? null
-    },
+    { id: u[COL_ID], rol: rolDe(u), id_gimnasio: u.id_gimnasio },
     process.env.JWT_SECRET,
     { expiresIn: '8h' }
   );
-
 // Nunca se devuelve la contraseña
 const publico = (u) => ({
   id: u[COL_ID],

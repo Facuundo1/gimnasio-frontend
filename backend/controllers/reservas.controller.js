@@ -227,3 +227,10 @@ exports.eliminar = async (req, res, next) => {
     res.json({ mensaje: 'Eliminado correctamente' });
   } catch (err) { next(err); }
 };
+exports.obtenerPorUsuario = async (idUsuario) => {
+  const [filas] = await db.query(
+    'SELECT * FROM reservas WHERE id_usuarios = ?',
+    [idUsuario]
+  );
+  return filas;
+};
