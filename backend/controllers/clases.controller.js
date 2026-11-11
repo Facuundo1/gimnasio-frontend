@@ -43,4 +43,33 @@ exports.obtener = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-exports.crear = async
+exports.crear = async (req, res, next) => {
+  try {
+    const errores = validar(req.body);
+    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+    const id = await Modelo.crear(req.body);
+    res.status(201).json({ id_clase: id, ...req.body });
+  } catch (err) { next(err); }
+};
+
+exports.actualizar = async (req, res, next) => {
+  try {
+    if (!idValido(req.params.id))
+      return res.status(400).json({ error: 'El id no es válido' });
+    const errores = validar(req.body);
+    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+    const filas = await Modelo.actualizar(req.params.id, req.body);
+    if (!filas) return res.status(404).json({ error: 'Clase no encontrada' });
+    res.json({ mensaje: 'Clase actualizada correctamente' });
+  } catch (err) { next(err); }
+};
+
+exports.eliminar = async (req, res, next) => {
+  try {
+    if (!idValido(req.params.id))
+      return res.status(400).json({ error: 'El id no es válido' });
+    const filas = await Modelo.eliminar(req.params.id);
+    if (!filas) return res.status(404).json({ error: 'Clase no encontrada' });
+    res.json({ mensaje: 'Clase eliminada correctamente' });
+  } catch (err) { next(err); }
+};

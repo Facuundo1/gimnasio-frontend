@@ -16,4 +16,4 @@ exports.crear = async ({ nombre, apellido, correo, hash }) => {
     [nombre, apellido, correo, hash]
   );
   return r.insertId;
-};
+}
