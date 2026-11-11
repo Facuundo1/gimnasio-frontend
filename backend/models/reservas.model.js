@@ -13,10 +13,10 @@ exports.obtenerPorId = async (id) => {
 exports.existeReservaActiva = async (idUsuario, idClase) => {
   const [filas] = await db.query(
     `SELECT id_reserva
-     FROM reservas
-     WHERE id_usuarios = ?
-     AND id_clase = ?
-     AND estado_reserva = 'Activa'`,
+    FROM reservas
+    WHERE id_usuarios = ?
+    AND id_clase = ?
+    AND estado_reserva = 'Activa'`,
     [idUsuario, idClase]
   );
 
@@ -26,14 +26,14 @@ exports.existeReservaActiva = async (idUsuario, idClase) => {
 exports.tieneCupo = async (idClase) => {
   const [filas] = await db.query(
     `SELECT
-       c.capacidad,
-       COUNT(r.id_reserva) AS reservas_activas
-     FROM clases c
-     LEFT JOIN reservas r
-       ON c.id_clase = r.id_clase
-       AND r.estado_reserva = 'Activa'
-     WHERE c.id_clase = ?
-     GROUP BY c.id_clase, c.capacidad`,
+      c.capacidad,
+      COUNT(r.id_reserva) AS reservas_activas
+    FROM clases c
+    LEFT JOIN reservas r
+      ON c.id_clase = r.id_clase
+      AND r.estado_reserva = 'Activa'
+    WHERE c.id_clase = ?
+    GROUP BY c.id_clase, c.capacidad`,
     [idClase]
   );
 
