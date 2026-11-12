@@ -1,20 +1,22 @@
 require('dotenv').config();
-const express = require('express');
+const express = require('express');    /// Carga las variables del archivo .env (DB_HOST, JWT_SECRET, PORT...) dentro de process.env.
 const cors = require('cors');
 const db = require('./db');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const app = express(); //Crea la aplicación Express: es el objeto que representa al servidor.
+app.use(cors()); // Middleware: permite llamadas desde otros orígenes (ej. el front en el puerto 5173).
+app.use(express.json()); // Middleware: convierte el cuerpo JSON de la petición en un objeto JavaScript (req.body).
 
+// Monta el router principal: todas las rutas de routes/index.js quedan bajo /api.
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api', require('./routes'));
 
 // Ruta inexistente
+// Un middleware sin ruta se ejecuta para cualquier petición que llegue hasta acá
 app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 
 // Errores no controlados
-// Errores no controlados
+// Con 4 parámetros, Express lo trata como manejador de errores (recibe lo que llega con next(err)).
 app.use((err, req, res, next) => {
   console.error(err);
   switch (err.code) {
@@ -35,7 +37,7 @@ app.use((err, req, res, next) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Devuelve una promesa: true si MySQL respondió. Recién ahí se abre el puerto.
 db.probarConexion().then((ok) => {
   if (!ok) process.exit(1);
   app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));

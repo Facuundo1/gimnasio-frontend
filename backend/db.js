@@ -1,8 +1,8 @@
 require('dotenv').config();
 const mysql = require('mysql2/promise');
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
+const pool = mysql.createPool({ // Crea el pool. Cada db.query(...) toma una conexión libre, ejecuta la consulta y la devuelve.
+  host: process.env.DB_HOST,  // process.env lee las variables del .env: así las credenciales no quedan en el código.
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -27,9 +27,9 @@ function explicarError(err) {
 }
 
 async function probarConexion() {
-  try {
+  try {    // ping verifica que MySQL conteste. await pausa la función hasta tener la respuesta
     const conn = await pool.getConnection();
-    await conn.ping();
+    await conn.ping(); // Devuelve la conexión al pool (no la cierra), para que otra consulta la use
     conn.release();
     console.log('✅ Conectado a MySQL');
     return true;

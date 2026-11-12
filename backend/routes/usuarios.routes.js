@@ -11,8 +11,10 @@ router.get(
 );
 
 router.get(
+   // req.params.id: el id del usuario que viene en la URL
   '/:id',
   verificarToken,
+   // Solo estos dos roles llegan al controlador; el rol 'usuario' recibe 403.
   permitirRoles('admin', 'superadmin'),
   c.obtener
 );

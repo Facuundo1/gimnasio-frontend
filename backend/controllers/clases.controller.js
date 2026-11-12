@@ -1,9 +1,9 @@
 const Modelo = require('../models/clases.model');
-
+//Es el intermediario entre HTTP y la base de datos. Su trabajo tiene cuatro pasos: leer lo que llegó, validar, llamar al modelo y responder con el código HTTP correcto.
 const idValido = (id) => Number.isInteger(Number(id)) && Number(id) > 0;
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const HORA = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
-
+//Validar: antes de tocar la base, chequea los datos
 const validar = (b = {}) => {
   const errores = [];
   if (!b.nombre_clase?.toString().trim())
@@ -29,10 +29,10 @@ const validar = (b = {}) => {
 
 exports.listar = async (req, res, next) => {
   try {
-    res.json(await Modelo.obtenerTodos());
+    res.json(await Modelo.obtenerTodos());// Llamar al modelo: el controlador no escribe SQL. Llama a una función del modelo, como Modelo.obtenerTodos(req.usuario), y espera el resultado con await.
   } catch (err) { next(err); }
 };
-
+//Leer: el controlador recibe req y res. De req saca el body con los datos del formulario, el id de la URL con req.params.id y el usuario logueado con req.usuario, que cargó el middleware del token.
 exports.obtener = async (req, res, next) => {
   try {
     if (!idValido(req.params.id))
@@ -42,7 +42,7 @@ exports.obtener = async (req, res, next) => {
     res.json(item);
   } catch (err) { next(err); }
 };
-
+//Todos los controladores son async y están envueltos en try/catch. Si algo falla inesperadamente, llamo a next(err) y el manejador de errores central de index.js decide la respuesta. Así no repito mensajes de error en cada controlador, y al usuario nunca le mostramos detalles técnicos.
 exports.crear = async (req, res, next) => {
   try {
     const errores = validar(req.body);

@@ -79,6 +79,7 @@ exports.crear = async (req, res, next) => {
     }
 
     // Verificar si hay cupos disponibles
+     // 409 Conflict: la petición es válida pero choca con el estado actual (clase llena)
     if (!tieneCupo) {
       return res.status(409).json({
         error: 'La clase no tiene cupos disponibles'

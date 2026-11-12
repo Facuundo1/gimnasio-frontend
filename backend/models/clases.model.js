@@ -1,6 +1,7 @@
 const db = require('../db');
 
-exports.obtenerTodos = async () => {
+exports.obtenerTodos = async () => { 
+    // db.query devuelve [filas, metadatos]. Con [filas] nos quedamos solo con las filas.
   const [filas] = await db.query('SELECT * FROM clases');
   return filas;
 };
@@ -13,6 +14,7 @@ exports.obtenerPorId = async (id) => {
 exports.crear = async (d) => {
   const [r] = await db.query(
     'INSERT INTO clases (nombre_clase, capacidad, fecha_clase, hora_clase, id_gimnasio) VALUES (?, ?, ?, ?, ?)',
+     // Un ? por columna: MySQL escapa los valores y evita la inyección SQL
     [d.nombre_clase, d.capacidad, d.fecha_clase, d.hora_clase, d.id_gimnasio]
   );
   return r.insertId;
@@ -28,5 +30,5 @@ exports.actualizar = async (id, d) => {
 
 exports.eliminar = async (id) => {
   const [r] = await db.query('DELETE FROM clases WHERE id_clase = ?', [id]);
-  return r.affectedRows;
+  return r.affectedRows;  // Cantidad de filas modificadas por el UPDATE.
 };
