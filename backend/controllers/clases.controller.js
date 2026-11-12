@@ -16,16 +16,45 @@ const faltantes = (body) =>
 
 exports.listar = async (req, res, next) => {
   try {
-    res.json(await Modelo.obtenerTodos());
-  } catch (err) { next(err); }
+    const { rol, id_gimnasio } = req.usuario;
+
+    if (rol === 'superadmin') {
+      return res.json(await Modelo.obtenerTodos());
+    }
+
+    if (!id_gimnasio) {
+      return res.status(403).json({
+        error: 'No tenés un gimnasio asignado'
+      });
+    }
+
+    res.json(await Modelo.obtenerPorGimnasio(id_gimnasio));
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.obtener = async (req, res, next) => {
   try {
-    const item = await Modelo.obtenerPorId(req.params.id);
-    if (!item) return res.status(404).json({ error: 'No encontrado' });
+    const { rol, id_gimnasio } = req.usuario;
+
+    const item = rol === 'superadmin'
+      ? await Modelo.obtenerPorId(req.params.id)
+      : id_gimnasio
+        ? await Modelo.obtenerPorIdYGimnasio(
+            req.params.id,
+            id_gimnasio
+          )
+        : null;
+
+    if (!item) {
+      return res.status(404).json({ error: 'No encontrado' });
+    }
+
     res.json(item);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.crear = async (req, res, next) => {

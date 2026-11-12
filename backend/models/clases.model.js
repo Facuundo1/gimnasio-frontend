@@ -5,6 +5,22 @@ exports.obtenerTodos = async () => {
   return filas;
 };
 
+exports.obtenerPorGimnasio = async (id_gimnasio) => {
+  const [filas] = await db.query(
+    'SELECT * FROM clases WHERE id_gimnasio = ?',
+    [id_gimnasio]
+  );
+  return filas;
+};
+
+exports.obtenerPorIdYGimnasio = async (id, id_gimnasio) => {
+  const [filas] = await db.query(
+    'SELECT * FROM clases WHERE id_clase = ? AND id_gimnasio = ?',
+    [id, id_gimnasio]
+  );
+  return filas[0];
+};
+
 exports.obtenerPorId = async (id) => {
   const [filas] = await db.query('SELECT * FROM clases WHERE id_clase = ?', [id]);
   return filas[0];

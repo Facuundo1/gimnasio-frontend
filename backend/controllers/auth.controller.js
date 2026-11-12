@@ -63,6 +63,7 @@ exports.registro = async (req, res, next) => {
       apellido: apellido.trim(),
       correo: correo.trim().toLowerCase(),
       hash,
+      id_gimnasio: 1,
     });
 
     const usuario = await Auth.buscarPorCorreo(correo.trim().toLowerCase());

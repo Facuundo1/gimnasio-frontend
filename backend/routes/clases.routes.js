@@ -6,14 +6,14 @@ const { verificarToken, permitirRoles } = require('../middleware/auth');
 router.get(
   '/',
   verificarToken,
-  permitirRoles('admin', 'superadmin'),
+  permitirRoles('usuario', 'admin', 'superadmin'),
   c.listar
 );
 
 router.get(
   '/:id',
   verificarToken,
-  permitirRoles('admin', 'superadmin'),
+  permitirRoles('usuario', 'admin', 'superadmin'),
   c.obtener
 );
 

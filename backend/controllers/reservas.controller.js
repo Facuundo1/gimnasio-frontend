@@ -67,7 +67,11 @@ exports.crear = async (req, res, next) => {
       });
     }
     // Verificar si el usuario existe
-    const usuario = await Usuario.obtenerPorId(req.body.id_usuarios);
+    const idUsuario = req.usuario.rol === 'usuario'
+      ? req.usuario.id
+      : req.body.id_usuarios;
+
+    const usuario = await Usuario.obtenerPorId(idUsuario, req.usuario);
 
     if (!usuario) {
       return res.status(404).json({
@@ -105,7 +109,10 @@ exports.crear = async (req, res, next) => {
     }
 
     // 4. Crear la reserva
-    const id = await Modelo.crear(req.body);
+    const id = await Modelo.crear({
+      ...req.body,
+      id_usuarios: idUsuario
+    });
 
     res.status(201).json({
       id,
@@ -133,6 +140,8 @@ exports.actualizar = async (req, res, next) => {
     const idUsuario = req.usuario.rol === 'usuario'
       ? req.usuario.id
       : req.body.id_usuarios;
+
+    const usuario = await Usuario.obtenerPorId(idUsuario, req.usuario);
 
     if (!usuario) {
       return res.status(404).json({
