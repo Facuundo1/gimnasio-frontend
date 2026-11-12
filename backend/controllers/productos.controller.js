@@ -1,71 +1,233 @@
 const Modelo = require('../models/productos.model');
+const Gimnasio = require('../models/gimnasio.model');
 
-const idValido = (id) => Number.isInteger(Number(id)) && Number(id) > 0;
+const idValido = (id) =>
+  Number.isInteger(Number(id)) && Number(id) > 0;
 
-const validar = (b = {}) => {
-  const errores = [];
-  if (!b.nombre_producto?.toString().trim())
-    errores.push('El nombre es obligatorio');
-  else if (b.nombre_producto.toString().trim().length > 100)
-    errores.push('El nombre es demasiado largo');
+const OBLIGATORIOS = [
+  'nombre_producto',
+  'precio_producto',
+  'stock'
+];
 
-  if (b.precio_producto === undefined || b.precio_producto === '' ||
-      isNaN(Number(b.precio_producto)) || Number(b.precio_producto) < 0)
-    errores.push('El precio debe ser un número mayor o igual a 0');
+const faltantes = (body) =>
+  OBLIGATORIOS.filter(
+    (c) => body[c] === undefined || body[c] === ''
+  );
 
-  if (b.stock === undefined || b.stock === '' ||
-      !Number.isInteger(Number(b.stock)) || Number(b.stock) < 0)
-    errores.push('El stock debe ser un número entero mayor o igual a 0');
+const validarProducto = (body) => {
+  if (!body.nombre_producto || !body.nombre_producto.trim()) {
+    return 'El nombre del producto es obligatorio';
+  }
 
-  if (b.id_gimnasio !== undefined && b.id_gimnasio !== null && b.id_gimnasio !== '' &&
-      !idValido(b.id_gimnasio))
-    errores.push('El gimnasio no es válido');
-  return errores;
+  if (body.nombre_producto.trim().length > 100) {
+    return 'El nombre del producto es demasiado largo';
+  }
+
+  if (
+    Number(body.precio_producto) < 0 ||
+    !Number.isFinite(Number(body.precio_producto))
+  ) {
+    return 'El precio debe ser un número mayor o igual a cero';
+  }
+
+  if (
+    !Number.isInteger(Number(body.stock)) ||
+    Number(body.stock) < 0
+  ) {
+    return 'El stock debe ser un entero mayor o igual a cero';
+  }
+
+  return null;
+};
+
+const obtenerGimnasio = (req) => {
+  if (req.usuario.rol === 'admin') {
+    return req.usuario.id_gimnasio;
+  }
+
+  return req.body.id_gimnasio;
 };
 
 exports.listar = async (req, res, next) => {
   try {
-    res.json(await Modelo.obtenerTodos(req.usuario));
-  } catch (err) { next(err); }
+    const productos = await Modelo.obtenerTodos(req.usuario);
+    res.json(productos);
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.obtener = async (req, res, next) => {
   try {
-    if (!idValido(req.params.id))
-      return res.status(400).json({ error: 'El id no es válido' });
-    const item = await Modelo.obtenerPorId(req.params.id, req.usuario);
-    if (!item) return res.status(404).json({ error: 'Producto no encontrado' });
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
+    const item = await Modelo.obtenerPorId(
+      req.params.id,
+      req.usuario
+    );
+
+    if (!item) {
+      return res.status(404).json({
+        error: 'Producto no encontrado'
+      });
+    }
+
     res.json(item);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.crear = async (req, res, next) => {
   try {
-    const errores = validar(req.body);
-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
-    const id = await Modelo.crear(req.body);
-    res.status(201).json({ id_producto: id, ...req.body });
-  } catch (err) { next(err); }
+    const f = faltantes(req.body);
+
+    if (f.length) {
+      return res.status(400).json({
+        error: 'Faltan campos: ' + f.join(', ')
+      });
+    }
+
+    const error = validarProducto(req.body);
+
+    if (error) {
+      return res.status(400).json({ error });
+    }
+
+    const id_gimnasio = obtenerGimnasio(req);
+
+    if (!idValido(id_gimnasio)) {
+      return res.status(400).json({
+        error: 'No hay un gimnasio válido asignado'
+      });
+    }
+
+    const gimnasio = await Gimnasio.obtenerPorId(id_gimnasio);
+
+    if (!gimnasio) {
+      return res.status(404).json({
+        error: 'El gimnasio no existe'
+      });
+    }
+
+    const datos = {
+      ...req.body,
+      id_gimnasio
+    };
+
+    const id = await Modelo.crear(datos);
+
+    res.status(201).json({
+      id_producto: id,
+      ...datos
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.actualizar = async (req, res, next) => {
   try {
-    if (!idValido(req.params.id))
-      return res.status(400).json({ error: 'El id no es válido' });
-    const errores = validar(req.body);
-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
-    const filas = await Modelo.actualizar(req.params.id, req.body, req.usuario);
-    if (!filas) return res.status(404).json({ error: 'Producto no encontrado' });
-    res.json({ mensaje: 'Producto actualizado correctamente' });
-  } catch (err) { next(err); }
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
+    const f = faltantes(req.body);
+
+    if (f.length) {
+      return res.status(400).json({
+        error: 'Faltan campos: ' + f.join(', ')
+      });
+    }
+
+    const error = validarProducto(req.body);
+
+    if (error) {
+      return res.status(400).json({ error });
+    }
+
+    const existente = await Modelo.obtenerPorId(
+      req.params.id,
+      req.usuario
+    );
+
+    if (!existente) {
+      return res.status(404).json({
+        error: 'Producto no encontrado'
+      });
+    }
+
+    const id_gimnasio = obtenerGimnasio(req);
+
+    if (!idValido(id_gimnasio)) {
+      return res.status(400).json({
+        error: 'No hay un gimnasio válido asignado'
+      });
+    }
+
+    const gimnasio = await Gimnasio.obtenerPorId(id_gimnasio);
+
+    if (!gimnasio) {
+      return res.status(404).json({
+        error: 'El gimnasio no existe'
+      });
+    }
+
+    const datos = {
+      ...req.body,
+      id_gimnasio
+    };
+
+    const filas = await Modelo.actualizar(
+      req.params.id,
+      datos,
+      req.usuario
+    );
+
+    if (!filas) {
+      return res.status(404).json({
+        error: 'No se pudo actualizar el producto'
+      });
+    }
+
+    res.json({
+      mensaje: 'Producto actualizado correctamente'
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.eliminar = async (req, res, next) => {
   try {
-    if (!idValido(req.params.id))
-      return res.status(400).json({ error: 'El id no es válido' });
-    const filas = await Modelo.eliminar(req.params.id, req.usuario);
-    if (!filas) return res.status(404).json({ error: 'Producto no encontrado' });
-    res.json({ mensaje: 'Producto eliminado correctamente' });
-  } catch (err) { next(err); }
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
+    const filas = await Modelo.eliminar(
+      req.params.id,
+      req.usuario
+    );
+
+    if (!filas) {
+      return res.status(404).json({
+        error: 'Producto no encontrado'
+      });
+    }
+
+    res.json({
+      mensaje: 'Producto eliminado correctamente'
+    });
+  } catch (err) {
+    next(err);
+  }
 };

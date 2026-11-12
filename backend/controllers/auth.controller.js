@@ -14,9 +14,13 @@ const rolDe = (u) => u[COL_ROL] || 'usuario';
 const firmarToken = (u) =>
    // Firma el token con el secreto del servidor: nadie puede falsificarlo sin conocer JWT_SECRET
   jwt.sign(
-    { id: u[COL_ID], rol: rolDe(u), id_gimnasio: u.id_gimnasio },
-    process.env.JWT_SECRET, // ?? devuelve null solo si id_gimnasio es null/undefined.
-    { expiresIn: '8h' }   // Después de 8 horas el token deja de ser válido y hay que volver a iniciar sesión.
+    {
+      id: u[COL_ID],
+      rol: rolDe(u),
+      id_gimnasio: u.id_gimnasio ?? null
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '8h' }
   );
 // Nunca se devuelve la contraseña
 // Se elige explícitamente qué campos salen: la contraseña nunca viaja al cliente.
@@ -61,6 +65,7 @@ exports.registro = async (req, res, next) => {
       apellido: apellido.trim(),
       correo: correo.trim().toLowerCase(),
       hash,
+      id_gimnasio: 1,
     });
 
     const usuario = await Auth.buscarPorCorreo(correo.trim().toLowerCase());

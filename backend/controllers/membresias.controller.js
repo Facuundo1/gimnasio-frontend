@@ -29,7 +29,10 @@ exports.crear = async (req, res, next) => {
       });
     }
 
-    const usuario = await Usuario.obtenerPorId(req.body.id_usuarios);
+    const usuario = await Usuario.obtenerPorId(
+      req.body.id_usuarios,
+      req.usuario
+    );
 
     if (!usuario) {
       return res.status(404).json({
@@ -74,7 +77,10 @@ exports.actualizar = async (req, res, next) => {
       });
     }
 
-    const usuario = await Usuario.obtenerPorId(req.body.id_usuarios);
+    const usuario = await Usuario.obtenerPorId(
+      req.body.id_usuarios,
+      req.usuario
+    );
 
     if (!usuario) {
       return res.status(404).json({

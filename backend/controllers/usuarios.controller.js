@@ -22,7 +22,15 @@ exports.listar = async (req, res, next) => {
 };
 
 exports.obtener = async (req, res, next) => {
-  try {  // req.params: valores de la URL. Para /usuarios/12, req.params.id === '12' (texto).
+  try {
+    // El usuario normal solamente puede consultar su propio perfil.
+    if (
+      req.usuario.rol === 'usuario' &&
+      Number(req.params.id) !== Number(req.usuario.id)
+    ) {
+      return res.status(403).json({ error: 'No tenés permiso para consultar este usuario' });
+    }
+
     const item = await Modelo.obtenerPorId(req.params.id, req.usuario);
 
     if (!item) {
@@ -77,11 +85,19 @@ exports.crear = async (req, res, next) => {
 
 exports.actualizar = async (req, res, next) => {
   try {
-    const f = faltantes(req.body);
+    const obligatoriosActualizar = [
+      'nombre_usuarios',
+      'apellido_usuarios',
+      'correo_usuarios'
+    ];
 
-    if (f.length) {
+    const faltantesActualizar = obligatoriosActualizar.filter(
+      (c) => req.body[c] === undefined || req.body[c] === ''
+    );
+
+    if (faltantesActualizar.length) {
       return res.status(400).json({
-        error: 'Faltan campos: ' + f.join(', ')
+        error: 'Faltan campos: ' + faltantesActualizar.join(', ')
       });
     }
   // Comprueba que el usuario exista y sea accesible para quien edita.
@@ -99,15 +115,25 @@ exports.actualizar = async (req, res, next) => {
       ? actual.id_gimnasio
       : (req.body.id_gimnasio ?? actual.id_gimnasio);
 
-    const hash = await bcrypt.hash(req.body.contrasenia_usuarios, 10);
-
-    const filas = await Modelo.actualizar(req.params.id, {
+    const datos = {
       ...req.body,
       rol,
-      id_gimnasio,
-      contrasenia_usuarios: hash
-    }, req.usuario);
-   // filas = filas afectadas. 0 significa que no se modificó/borró nada.
+      id_gimnasio
+    };
+
+    if (req.body.contrasenia_usuarios) {
+      datos.contrasenia_usuarios = await bcrypt.hash(
+        req.body.contrasenia_usuarios,
+        10
+      );
+    }
+
+    const filas = await Modelo.actualizar(
+      req.params.id,
+      datos,
+      req.usuario
+    );
+
     if (!filas) {
       return res.status(404).json({ error: 'No encontrado' });
     }

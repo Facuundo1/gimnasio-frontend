@@ -1,5 +1,7 @@
 const Modelo = require('../models/clases.model');
-//Es el intermediario entre HTTP y la base de datos. Su trabajo tiene cuatro pasos: leer lo que llegó, validar, llamar al modelo y responder con el código HTTP correcto.
+const Gimnasio = require('../models/gimnasio.model');
+const Profesor = require('../models/profesores.model');
+
 const idValido = (id) => Number.isInteger(Number(id)) && Number(id) > 0;
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const HORA = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -15,6 +17,9 @@ const validar = (b = {}) => {
       !Number.isInteger(Number(b.capacidad)) || Number(b.capacidad) < 1)
     errores.push('La capacidad debe ser un número entero mayor a 0');
 
+  if (!idValido(b.profesor_id))
+    errores.push('Debe seleccionar un profesor válido');
+
   if (!FECHA.test(b.fecha_clase || '') || isNaN(Date.parse(b.fecha_clase)))
     errores.push('La fecha debe tener formato AAAA-MM-DD');
 
@@ -29,47 +34,227 @@ const validar = (b = {}) => {
 
 exports.listar = async (req, res, next) => {
   try {
-    res.json(await Modelo.obtenerTodos());// Llamar al modelo: el controlador no escribe SQL. Llama a una función del modelo, como Modelo.obtenerTodos(req.usuario), y espera el resultado con await.
-  } catch (err) { next(err); }
+    const { rol, id_gimnasio } = req.usuario;
+
+    // Superadmin y usuarios sin gimnasio ven todas las clases.
+    if (rol === 'superadmin' || (rol === 'usuario' && !id_gimnasio)) {
+      return res.json(await Modelo.obtenerTodos());
+    }
+
+    // Los usuarios y administradores con gimnasio
+    // solamente ven las clases de su gimnasio.
+    if (!id_gimnasio) {
+      return res.status(403).json({
+        error: 'El administrador no tiene un gimnasio asignado'
+      });
+    }
+
+    res.json(await Modelo.obtenerPorGimnasio(id_gimnasio));
+  } catch (err) {
+    next(err);
+  }
 };
 //Leer: el controlador recibe req y res. De req saca el body con los datos del formulario, el id de la URL con req.params.id y el usuario logueado con req.usuario, que cargó el middleware del token.
 exports.obtener = async (req, res, next) => {
   try {
-    if (!idValido(req.params.id))
-      return res.status(400).json({ error: 'El id no es válido' });
-    const item = await Modelo.obtenerPorId(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Clase no encontrada' });
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
+    const { rol, id_gimnasio } = req.usuario;
+
+    const item = rol === 'superadmin'
+      ? await Modelo.obtenerPorId(req.params.id)
+      : id_gimnasio
+        ? await Modelo.obtenerPorIdYGimnasio(
+            req.params.id,
+            id_gimnasio
+          )
+        : null;
+
+    if (!item) {
+      return res.status(404).json({
+        error: 'Clase no encontrada'
+      });
+    }
+
     res.json(item);
-  } catch (err) { next(err); }
+
+  } catch (err) {
+    next(err);
+  }
 };
 //Todos los controladores son async y están envueltos en try/catch. Si algo falla inesperadamente, llamo a next(err) y el manejador de errores central de index.js decide la respuesta. Así no repito mensajes de error en cada controlador, y al usuario nunca le mostramos detalles técnicos.
 exports.crear = async (req, res, next) => {
   try {
-    const errores = validar(req.body);
-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
-    const id = await Modelo.crear(req.body);
-    res.status(201).json({ id_clase: id, ...req.body });
-  } catch (err) { next(err); }
+    const datos = { ...req.body };
+
+    // El admin siempre utiliza su gimnasio del token.
+    if (req.usuario.rol === 'admin') {
+      if (!req.usuario.id_gimnasio) {
+        return res.status(400).json({
+          error: 'El administrador no tiene un gimnasio asignado'
+        });
+      }
+
+      datos.id_gimnasio = req.usuario.id_gimnasio;
+    }
+
+    const errores = validar(datos);
+
+    if (errores.length) {
+      return res.status(400).json({
+        error: errores.join('. ')
+      });
+    }
+
+    // Verificar que el gimnasio exista.
+    const gimnasio = await Gimnasio.obtenerPorId(datos.id_gimnasio);
+
+    if (!gimnasio) {
+      return res.status(404).json({
+        error: 'El gimnasio no existe'
+      });
+    }
+
+    // Verificar que el profesor pertenezca al gimnasio.
+    const profesor = req.usuario.rol === 'superadmin'
+      ? await Profesor.obtenerPorId(datos.profesor_id)
+      : await Profesor.obtenerPorIdYGimnasio(
+          datos.profesor_id,
+          datos.id_gimnasio
+        );
+
+    if (!profesor) {
+      return res.status(404).json({
+        error: 'El profesor no existe o no pertenece a tu gimnasio'
+      });
+    }
+
+    const id = await Modelo.crear(datos);
+
+    res.status(201).json({
+      id_clase: id,
+      ...datos
+    });
+
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.actualizar = async (req, res, next) => {
   try {
-    if (!idValido(req.params.id))
-      return res.status(400).json({ error: 'El id no es válido' });
-    const errores = validar(req.body);
-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
-    const filas = await Modelo.actualizar(req.params.id, req.body);
-    if (!filas) return res.status(404).json({ error: 'Clase no encontrada' });
-    res.json({ mensaje: 'Clase actualizada correctamente' });
-  } catch (err) { next(err); }
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
+    const datos = { ...req.body };
+
+    if (req.usuario.rol === 'admin') {
+      if (!req.usuario.id_gimnasio) {
+        return res.status(400).json({
+          error: 'El administrador no tiene un gimnasio asignado'
+        });
+      }
+
+      datos.id_gimnasio = req.usuario.id_gimnasio;
+    }
+
+    const errores = validar(datos);
+
+    if (errores.length) {
+      return res.status(400).json({
+        error: errores.join('. ')
+      });
+    }
+
+    // Comprobar que la clase exista y pertenezca al gimnasio.
+    const claseActual = req.usuario.rol === 'superadmin'
+      ? await Modelo.obtenerPorId(req.params.id)
+      : await Modelo.obtenerPorIdYGimnasio(
+          req.params.id,
+          req.usuario.id_gimnasio
+        );
+
+    if (!claseActual) {
+      return res.status(404).json({
+        error: 'Clase no encontrada'
+      });
+    }
+
+    // Comprobar que el gimnasio exista.
+    const gimnasio = await Gimnasio.obtenerPorId(datos.id_gimnasio);
+
+    if (!gimnasio) {
+      return res.status(404).json({
+        error: 'El gimnasio no existe'
+      });
+    }
+
+    // Comprobar que el profesor pertenezca al gimnasio.
+    const profesor = req.usuario.rol === 'superadmin'
+      ? await Profesor.obtenerPorId(datos.profesor_id)
+      : await Profesor.obtenerPorIdYGimnasio(
+          datos.profesor_id,
+          datos.id_gimnasio
+        );
+
+    if (!profesor) {
+      return res.status(404).json({
+        error: 'El profesor no existe o no pertenece a tu gimnasio'
+      });
+    }
+
+    const filas = await Modelo.actualizar(
+      req.params.id,
+      datos,
+      req.usuario
+    );
+
+    if (!filas) {
+      return res.status(404).json({
+        error: 'No se pudo actualizar la clase'
+      });
+    }
+
+    res.json({
+      mensaje: 'Clase actualizada correctamente'
+    });
+
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.eliminar = async (req, res, next) => {
   try {
-    if (!idValido(req.params.id))
-      return res.status(400).json({ error: 'El id no es válido' });
-    const filas = await Modelo.eliminar(req.params.id);
-    if (!filas) return res.status(404).json({ error: 'Clase no encontrada' });
-    res.json({ mensaje: 'Clase eliminada correctamente' });
-  } catch (err) { next(err); }
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
+    const filas = await Modelo.eliminar(
+      req.params.id,
+      req.usuario
+    );
+
+    if (!filas) {
+      return res.status(404).json({
+        error: 'Clase no encontrada'
+      });
+    }
+
+    res.json({
+      mensaje: 'Clase eliminada correctamente'
+    });
+
+  } catch (err) {
+    next(err);
+  }
 };

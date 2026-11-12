@@ -3,21 +3,47 @@ const c = require('../controllers/reservas.controller');
 const { verificarToken, permitirRoles } = require('../middleware/auth');
 
 router.use(verificarToken);
-// Consultas: cada usuario ve sus propias reservas
-router.get('/', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.listar);
 
-router.get('/:id', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.obtener);
+// Consultar reservas
+router.get(
+  '/',
+  permitirRoles('usuario', 'admin', 'superadmin'),
+  c.listar
+);
 
-// Crear reservas
-router.post('/', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.crear);
+// Consultar una reserva
+router.get(
+  '/:id',
+  permitirRoles('usuario', 'admin', 'superadmin'),
+  c.obtener
+);
 
-// Modificar reservas
-router.put('/:id', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.actualizar);
+// Crear reserva
+router.post(
+  '/',
+  permitirRoles('usuario', 'admin', 'superadmin'),
+  c.crear
+);
 
-// Cancelar reservas
-router.patch('/:id/cancelar', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.cancelar);
+// Actualizar reserva
+router.put(
+  '/:id',
+  permitirRoles('usuario', 'admin', 'superadmin'),
+  c.actualizar
+);
 
-// Eliminar: administradores
-router.delete('/:id', verificarToken, permitirRoles('admin', 'superadmin'), c.eliminar);
+// Cancelar reserva
+router.patch(
+  '/:id/cancelar',
+  permitirRoles('usuario', 'admin', 'superadmin'),
+  c.cancelar
+);
+
+// Eliminar definitivamente
+router.delete(
+  '/:id',
+  permitirRoles('admin', 'superadmin'),
+  c.eliminar
+);
 
 module.exports = router;
