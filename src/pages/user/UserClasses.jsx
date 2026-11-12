@@ -33,7 +33,15 @@ function Agenda({ clases, reservas, profesores, usuario, recargar }) {
       return inicio && inicio >= ahora;
     })
     .sort((a, b) => inicioClase(a) - inicioClase(b));
-
+  console.log(
+    'CLASES FUTURAS:',
+    proximas.map((c) => ({
+      nombre: c.nombre_clase,
+      fecha: c.fecha_clase,
+      hora: c.hora_clase,
+      inicio: inicioClase(c),
+    }))
+  );
   const delDia = (d) => proximas.filter((c) => parseFecha(c.fecha_clase).getDay() === d);
   const tabs = DIAS.map((d) => ({ ...d, count: delDia(d.value).length || undefined }));
   const visibles = delDia(dia);

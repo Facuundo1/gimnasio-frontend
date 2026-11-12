@@ -20,7 +20,6 @@ const firmarToken = (u) =>
     process.env.JWT_SECRET,
     { expiresIn: '8h' }
   );
-
 // Nunca se devuelve la contraseña
 const publico = (u) => ({
   id: u[COL_ID],

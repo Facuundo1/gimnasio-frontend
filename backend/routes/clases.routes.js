@@ -1,8 +1,8 @@
-
 const router = require('express').Router();
 const c = require('../controllers/clases.controller');
 const { verificarToken, permitirRoles } = require('../middleware/auth');
 
+// Listar clases
 router.get(
   '/',
   verificarToken,
@@ -10,6 +10,7 @@ router.get(
   c.listar
 );
 
+// Obtener una clase por ID
 router.get(
   '/:id',
   verificarToken,
@@ -17,6 +18,7 @@ router.get(
   c.obtener
 );
 
+// Crear clase
 router.post(
   '/',
   verificarToken,
@@ -24,6 +26,7 @@ router.post(
   c.crear
 );
 
+// Actualizar clase
 router.put(
   '/:id',
   verificarToken,
@@ -31,6 +34,7 @@ router.put(
   c.actualizar
 );
 
+// Eliminar clase
 router.delete(
   '/:id',
   verificarToken,
