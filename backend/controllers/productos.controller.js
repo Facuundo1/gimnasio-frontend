@@ -1,11 +1,13 @@
-
 const Modelo = require('../models/productos.model');
 const Gimnasio = require('../models/gimnasio.model');
 
+const idValido = (id) =>
+  Number.isInteger(Number(id)) && Number(id) > 0;
+
 const OBLIGATORIOS = [
-  "nombre_producto",
-  "precio_producto",
-  "stock"
+  'nombre_producto',
+  'precio_producto',
+  'stock'
 ];
 
 const faltantes = (body) =>
@@ -16,6 +18,10 @@ const faltantes = (body) =>
 const validarProducto = (body) => {
   if (!body.nombre_producto || !body.nombre_producto.trim()) {
     return 'El nombre del producto es obligatorio';
+  }
+
+  if (body.nombre_producto.trim().length > 100) {
+    return 'El nombre del producto es demasiado largo';
   }
 
   if (
@@ -35,7 +41,7 @@ const validarProducto = (body) => {
   return null;
 };
 
-const obtenerGimnasio = async (req) => {
+const obtenerGimnasio = (req) => {
   if (req.usuario.rol === 'admin') {
     return req.usuario.id_gimnasio;
   }
@@ -54,13 +60,21 @@ exports.listar = async (req, res, next) => {
 
 exports.obtener = async (req, res, next) => {
   try {
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
     const item = await Modelo.obtenerPorId(
       req.params.id,
       req.usuario
     );
 
     if (!item) {
-      return res.status(404).json({ error: 'No encontrado' });
+      return res.status(404).json({
+        error: 'Producto no encontrado'
+      });
     }
 
     res.json(item);
@@ -85,11 +99,11 @@ exports.crear = async (req, res, next) => {
       return res.status(400).json({ error });
     }
 
-    const id_gimnasio = await obtenerGimnasio(req);
+    const id_gimnasio = obtenerGimnasio(req);
 
-    if (!id_gimnasio) {
+    if (!idValido(id_gimnasio)) {
       return res.status(400).json({
-        error: 'No hay un gimnasio asignado'
+        error: 'No hay un gimnasio válido asignado'
       });
     }
 
@@ -109,7 +123,7 @@ exports.crear = async (req, res, next) => {
     const id = await Modelo.crear(datos);
 
     res.status(201).json({
-      id,
+      id_producto: id,
       ...datos
     });
   } catch (err) {
@@ -119,6 +133,12 @@ exports.crear = async (req, res, next) => {
 
 exports.actualizar = async (req, res, next) => {
   try {
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
     const f = faltantes(req.body);
 
     if (f.length) {
@@ -133,7 +153,6 @@ exports.actualizar = async (req, res, next) => {
       return res.status(400).json({ error });
     }
 
-    // Comprueba que el producto pertenezca al gimnasio del administrador.
     const existente = await Modelo.obtenerPorId(
       req.params.id,
       req.usuario
@@ -141,15 +160,15 @@ exports.actualizar = async (req, res, next) => {
 
     if (!existente) {
       return res.status(404).json({
-        error: 'No encontrado'
+        error: 'Producto no encontrado'
       });
     }
 
-    const id_gimnasio = await obtenerGimnasio(req);
+    const id_gimnasio = obtenerGimnasio(req);
 
-    if (!id_gimnasio) {
+    if (!idValido(id_gimnasio)) {
       return res.status(400).json({
-        error: 'No hay un gimnasio asignado'
+        error: 'No hay un gimnasio válido asignado'
       });
     }
 
@@ -174,12 +193,12 @@ exports.actualizar = async (req, res, next) => {
 
     if (!filas) {
       return res.status(404).json({
-        error: 'No encontrado'
+        error: 'No se pudo actualizar el producto'
       });
     }
 
     res.json({
-      mensaje: 'Actualizado correctamente'
+      mensaje: 'Producto actualizado correctamente'
     });
   } catch (err) {
     next(err);
@@ -188,6 +207,12 @@ exports.actualizar = async (req, res, next) => {
 
 exports.eliminar = async (req, res, next) => {
   try {
+    if (!idValido(req.params.id)) {
+      return res.status(400).json({
+        error: 'El id no es válido'
+      });
+    }
+
     const filas = await Modelo.eliminar(
       req.params.id,
       req.usuario
@@ -195,12 +220,12 @@ exports.eliminar = async (req, res, next) => {
 
     if (!filas) {
       return res.status(404).json({
-        error: 'No encontrado'
+        error: 'Producto no encontrado'
       });
     }
 
     res.json({
-      mensaje: 'Eliminado correctamente'
+      mensaje: 'Producto eliminado correctamente'
     });
   } catch (err) {
     next(err);

@@ -20,7 +20,6 @@ const firmarToken = (u) =>
     process.env.JWT_SECRET,
     { expiresIn: '8h' }
   );
-
 // Nunca se devuelve la contraseña
 const publico = (u) => ({
   id: u[COL_ID],
@@ -63,6 +62,7 @@ exports.registro = async (req, res, next) => {
       apellido: apellido.trim(),
       correo: correo.trim().toLowerCase(),
       hash,
+      id_gimnasio: 1,
     });
 
     const usuario = await Auth.buscarPorCorreo(correo.trim().toLowerCase());
