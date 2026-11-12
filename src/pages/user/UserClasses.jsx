@@ -17,6 +17,10 @@ const DIAS = [
 ];
 
 function Agenda({ clases, reservas, profesores, usuario, recargar }) {
+  console.log('USUARIO:', usuario);
+  console.log('CLASES RECIBIDAS:', clases);
+  console.log('GIMNASIO USUARIO:', usuario.id_gimnasio);
+  console.log('CLASES FILTRADAS:', delGimnasio(clases, usuario.id_gimnasio));
   const toast = useToast();
   const [dia, setDia] = useState(() => new Date().getDay());
   const [reservando, setReservando] = useState(null);
