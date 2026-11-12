@@ -26,6 +26,7 @@ function Planes({ membresias, usuario, recargar }) {
         plan: elegido,
         existente: ultimaMembresia(membresias, usuario.id),
       });
+      window.dispatchEvent(new Event('membresia-cambiada'));
       toast.exito(`Ahora tenés el plan ${elegido.id}`);
       setElegido(null);
       recargar();
