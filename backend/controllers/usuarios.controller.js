@@ -1,159 +1,188 @@
-
-const Modelo = require('../models/usuarios.model');
 const bcrypt = require('bcryptjs');
+const Modelo = require('../models/usuarios.model');
 
-//Lista los campos requeridos para crear o actualizar un usuario. Si alguno falta, se devuelve un error 400.
-const OBLIGATORIOS = [
-  'contrasenia_usuarios',
-  'nombre_usuarios',
-  'apellido_usuarios',
-  'correo_usuarios'
-];
+const ROLES = ['usuario', 'admin', 'superadmin'];
+const PASS_INICIAL = '123456';
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const faltantes = (body) =>   // filter conserva solo los campos que faltan o están vacíos.
-  OBLIGATORIOS.filter((c) => body[c] === undefined || body[c] === '');
+const idValido = (id) => Number.isInteger(Number(id)) && Number(id) > 0;
+const texto = (v) => (v === undefined || v === null ? '' : String(v).trim());
+const esSuper = (u) => u.rol === 'superadmin';
+const mismoGim = (a, b) => Number(a) === Number(b);
+
+// Acepta los nombres de campo de Members y los de la base
+const leer = (b = {}) => ({
+  nombre: texto(b.nombre_usuarios ?? b.nombre),
+  apellido: texto(b.apellido_usuarios ?? b.apellido),
+  correo: texto(b.correo_usuarios ?? b.correo ?? b.email).toLowerCase(),
+  telefono: texto(b.telefono ?? b.telefono_usuarios).slice(0, 20),
+  pass: String(b.contrasenia_usuarios ?? b.password ?? b.contrasenia ?? ''),
+  rol: texto(b.rol),
+  gimnasio: b.id_gimnasio,
+});
+
+// Rol y gimnasio se leen de la BASE, no del token: nunca quedan desactualizados
+const actorActual = (req) => Modelo.buscarPorIdGestion(req.usuario.id);
+
+// Devuelve el actor o responde el error y devuelve null
+const validarActor = async (req, res) => {
+  const actor = await actorActual(req);
+  if (!actor) {
+    res.status(401).json({ error: 'Sesión inválida, volvé a iniciar sesión' });
+    return null;
+  }
+  if (actor.rol !== 'admin' && actor.rol !== 'superadmin') {
+    res.status(403).json({ error: 'No tenés permisos' });
+    return null;
+  }
+  if (!esSuper(actor) && !actor.id_gimnasio) {
+    res.status(400).json({ error: 'Tu usuario no tiene un gimnasio asignado' });
+    return null;
+  }
+  return actor;
+};
+
+// 200 = puede; 404 = no existe o es de otro gimnasio; 403 = no es un socio
+const acceso = (actor, target) => {
+  if (!target) return 404;
+  if (esSuper(actor)) return 200;
+  if (!mismoGim(target.id_gimnasio, actor.id_gimnasio) || target.rol === 'superadmin') return 404;
+  if (target.rol !== 'usuario') return 403;
+  return 200;
+};
+
+const errorAcceso = (res, codigo) =>
+  codigo === 403
+    ? res.status(403).json({ error: 'No tenés permisos sobre este usuario' })
+    : res.status(404).json({ error: 'Usuario no encontrado' });
 
 exports.listar = async (req, res, next) => {
-  try {    // El modelo usa req.usuario.rol e id_gimnasio para decidir qué filas devolver
-    res.json(await Modelo.obtenerTodos(req.usuario));
-  } catch (err) {
-    next(err);
-  }
+  try {
+    const actor = await validarActor(req, res);
+    if (!actor) return;
+    res.json(await Modelo.listarGestion(actor));
+  } catch (err) { next(err); }
 };
 
 exports.obtener = async (req, res, next) => {
   try {
-    // El usuario normal solamente puede consultar su propio perfil.
-    if (
-      req.usuario.rol === 'usuario' &&
-      Number(req.params.id) !== Number(req.usuario.id)
-    ) {
-      return res.status(403).json({ error: 'No tenés permiso para consultar este usuario' });
-    }
-
-    const item = await Modelo.obtenerPorId(req.params.id, req.usuario);
-
-    if (!item) {
-      return res.status(404).json({ error: 'No encontrado' });
-    }
-
-    res.json(item);
-  } catch (err) {
-    next(err);
-  }
+    if (!idValido(req.params.id))
+      return res.status(400).json({ error: 'El id no es válido' });
+    const actor = await validarActor(req, res);
+    if (!actor) return;
+    const target = await Modelo.buscarPorIdGestion(req.params.id);
+    const ok = target && (esSuper(actor) ||
+      (mismoGim(target.id_gimnasio, actor.id_gimnasio) && target.rol !== 'superadmin'));
+    if (!ok) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json(target);
+  } catch (err) { next(err); }
 };
 
 exports.crear = async (req, res, next) => {
   try {
-    const f = faltantes(req.body);
+    const actor = await validarActor(req, res);
+    if (!actor) return;
+    const d = leer(req.body);
 
-    if (f.length) {
-      return res.status(400).json({
-        error: 'Faltan campos: ' + f.join(', ')
-      });
+    const errores = [];
+    if (!d.nombre) errores.push('El nombre es obligatorio');
+    if (!d.apellido) errores.push('El apellido es obligatorio');
+    if (!d.correo) errores.push('El correo es obligatorio');
+    else if (!EMAIL.test(d.correo)) errores.push('El correo no es válido');
+    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+
+    // Admin: siempre socio y de su gimnasio. Superadmin: elige.
+    let rol = 'usuario';
+    let id_gimnasio = actor.id_gimnasio;
+    if (esSuper(actor)) {
+      if (ROLES.includes(d.rol)) rol = d.rol;
+      if (idValido(d.gimnasio)) id_gimnasio = Number(d.gimnasio);
     }
-    // Operador ternario: condición ? valorSiVerdadero : valorSiFalso.
-    const rol = req.usuario.rol === 'admin'
-      ? 'usuario'
-      : (req.body.rol || 'usuario');
- // El admin queda forzado a su propio gimnasio: no puede crear usuarios en otro
-    const id_gimnasio = req.usuario.rol === 'admin'
-      ? req.usuario.id_gimnasio
-      : (req.body.id_gimnasio || null);
- // Nunca se guarda la contraseña en texto plano.
-    const hash = await bcrypt.hash(req.body.contrasenia_usuarios, 10);
+    if (!id_gimnasio)
+      return res.status(400).json({ error: 'Elegí un gimnasio para el usuario' });
 
-    const id = await Modelo.crear({   // Spread: copia todos los campos del cuerpo y luego sobreescribe rol, id_gimnasio y la contraseña
-      ...req.body,
+    if (await Modelo.correoEnUso(d.correo))
+      return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
+
+    // Sin contraseña en el formulario: queda la inicial y el socio la cambia
+    const hash = await bcrypt.hash(d.pass || PASS_INICIAL, 10);
+
+    const id = await Modelo.crearUsuario({
+      nombre_usuarios: d.nombre,
+      apellido_usuarios: d.apellido,
+      correo_usuarios: d.correo,
+      hash,
+      telefono: d.telefono || null,
       rol,
       id_gimnasio,
-      contrasenia_usuarios: hash
     });
-// Rest: separa la contraseña del resto de los campos.
-    const { contrasenia_usuarios, ...usuarioPublico } = req.body;
-
-    res.status(201).json({
-      id,
-      ...usuarioPublico,
-      rol,
-      id_gimnasio
-    });
-  } catch (err) {
-    next(err);
-  }
+    const usuario = await Modelo.buscarPorIdGestion(id);
+    // "id" además de "id_usuarios", por si el formulario usa el id para crear el plan
+    res.status(201).json({ id, ...usuario });
+  } catch (err) { next(err); }
 };
 
 exports.actualizar = async (req, res, next) => {
   try {
-    const obligatoriosActualizar = [
-      'nombre_usuarios',
-      'apellido_usuarios',
-      'correo_usuarios'
-    ];
+    if (!idValido(req.params.id))
+      return res.status(400).json({ error: 'El id no es válido' });
+    const actor = await validarActor(req, res);
+    if (!actor) return;
 
-    const faltantesActualizar = obligatoriosActualizar.filter(
-      (c) => req.body[c] === undefined || req.body[c] === ''
-    );
+    const target = await Modelo.buscarPorIdGestion(req.params.id);
+    const codigo = acceso(actor, target);
+    if (codigo !== 200) return errorAcceso(res, codigo);
 
-    if (faltantesActualizar.length) {
-      return res.status(400).json({
-        error: 'Faltan campos: ' + faltantesActualizar.join(', ')
-      });
+    const d = leer(req.body);
+    // Lo que no venga en el formulario se conserva
+    const nombre = d.nombre || target.nombre_usuarios;
+    const apellido = d.apellido || target.apellido_usuarios;
+    const correo = d.correo || target.correo_usuarios;
+    const telefono = req.body.telefono === undefined && req.body.telefono_usuarios === undefined
+      ? target.telefono
+      : d.telefono || null;
+
+    if (!EMAIL.test(correo)) return res.status(400).json({ error: 'El correo no es válido' });
+
+    let rol = target.rol;
+    let id_gimnasio = target.id_gimnasio;
+    if (esSuper(actor)) {
+      if (ROLES.includes(d.rol)) rol = d.rol;
+      if (idValido(d.gimnasio)) id_gimnasio = Number(d.gimnasio);
     }
-  // Comprueba que el usuario exista y sea accesible para quien edita.
-    const actual = await Modelo.obtenerPorId(req.params.id, req.usuario);
+    if (Number(target.id_usuarios) === Number(actor.id_usuarios) && rol !== target.rol)
+      return res.status(400).json({ error: 'No podés cambiar tu propio rol' });
 
-    if (!actual) {
-      return res.status(404).json({ error: 'No encontrado' });
-    }
+    if (await Modelo.correoEnUso(correo, target.id_usuarios))
+      return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
 
-    const rol = req.usuario.rol === 'admin'
-      ? actual.rol
-      : (req.body.rol || actual.rol);
-
-    const id_gimnasio = req.usuario.rol === 'admin'
-      ? actual.id_gimnasio
-      : (req.body.id_gimnasio ?? actual.id_gimnasio);
-
-    const datos = {
-      ...req.body,
+    await Modelo.actualizarUsuario(target.id_usuarios, {
+      nombre_usuarios: nombre,
+      apellido_usuarios: apellido,
+      correo_usuarios: correo,
+      telefono,
       rol,
-      id_gimnasio
-    };
-
-    if (req.body.contrasenia_usuarios) {
-      datos.contrasenia_usuarios = await bcrypt.hash(
-        req.body.contrasenia_usuarios,
-        10
-      );
-    }
-
-    const filas = await Modelo.actualizar(
-      req.params.id,
-      datos,
-      req.usuario
-    );
-
-    if (!filas) {
-      return res.status(404).json({ error: 'No encontrado' });
-    }
-
-    res.json({ mensaje: 'Actualizado correctamente' });
-  } catch (err) {
-    next(err);
-  }
+      id_gimnasio,
+      hash: d.pass ? await bcrypt.hash(d.pass, 10) : null, // vacía = no se cambia
+    });
+    res.json({ mensaje: 'Usuario actualizado correctamente' });
+  } catch (err) { next(err); }
 };
 
 exports.eliminar = async (req, res, next) => {
   try {
-    const filas = await Modelo.eliminar(req.params.id, req.usuario);
+    if (!idValido(req.params.id))
+      return res.status(400).json({ error: 'El id no es válido' });
+    const actor = await validarActor(req, res);
+    if (!actor) return;
+    if (Number(req.params.id) === Number(actor.id_usuarios))
+      return res.status(400).json({ error: 'No podés eliminar tu propia cuenta' });
 
-    if (!filas) {
-      return res.status(404).json({ error: 'No encontrado' });
-    }
+    const target = await Modelo.buscarPorIdGestion(req.params.id);
+    const codigo = acceso(actor, target);
+    if (codigo !== 200) return errorAcceso(res, codigo);
 
-    res.json({ mensaje: 'Eliminado correctamente' });
-  } catch (err) {
-    next(err);
-  }
+    await Modelo.eliminarConDependencias(target.id_usuarios);
+    res.json({ mensaje: 'Usuario eliminado correctamente' });
+  } catch (err) { next(err); }
 };

@@ -22,6 +22,7 @@ import AdminClasses from './pages/admin/AdminClasses';
 import Profesores from './pages/admin/Profesores';
 import Finance from './pages/admin/Finance';
 import ProductsAdmin from './pages/admin/ProductsAdmin';
+import AdminUsuarios from './pages/admin/AdminUsuarios';
 
 import SuperDashboard from './pages/superadmin/SuperDashboard';
 import Gyms from './pages/superadmin/Gyms';
@@ -58,6 +59,7 @@ export default function App() {
                 <Route path="profesores" element={<Profesores />} />
                 <Route path="finanzas" element={<Finance />} />
                 <Route path="tienda" element={<ProductsAdmin />} />
+                <Route path="usuarios" element={<AdminUsuarios />} />
               </Route>
             </Route>
 
