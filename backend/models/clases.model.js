@@ -33,6 +33,14 @@ exports.profesorDelGimnasio = async (idProfesor, idGimnasio) => {
   return filas.length > 0;
 };
 
+exports.obtenerPorIdYGimnasio = async (id, idGimnasio) => {
+  const [filas] = await db.query(
+    'SELECT * FROM clases WHERE id_clase = ? AND id_gimnasio = ?',
+    [id, idGimnasio]
+  );
+  return filas[0];
+};
+
 exports.crear = async (d) => {
   const [r] = await db.query(
     `INSERT INTO clases
