@@ -1,79 +1,60 @@
 const db = require('../db');
 
-exports.obtenerTodos = async () => { 
-    // db.query devuelve [filas, metadatos]. Con [filas] nos quedamos solo con las filas.
-  const [filas] = await db.query('SELECT * FROM clases');
+const esSuper = (u) => u.rol === 'superadmin';
+
+exports.obtenerTodos = async (usuario) => {
+  let sql = 'SELECT * FROM clases';
+  const params = [];
+  if (!esSuper(usuario)) {
+    sql += ' WHERE id_gimnasio = ?';
+    params.push(usuario.id_gimnasio);
+  }
+  const [filas] = await db.query(sql, params);
   return filas;
 };
 
-exports.obtenerPorGimnasio = async (id_gimnasio) => {
-  const [filas] = await db.query(
-    'SELECT * FROM clases WHERE id_gimnasio = ?',
-    [id_gimnasio]
-  );
-  return filas;
-};
-
-exports.obtenerPorIdYGimnasio = async (id, id_gimnasio) => {
-  const [filas] = await db.query(
-    'SELECT * FROM clases WHERE id_clase = ? AND id_gimnasio = ?',
-    [id, id_gimnasio]
-  );
+exports.obtenerPorId = async (id, usuario) => {
+  let sql = 'SELECT * FROM clases WHERE id_clase = ?';
+  const params = [id];
+  if (!esSuper(usuario)) {
+    sql += ' AND id_gimnasio = ?';
+    params.push(usuario.id_gimnasio);
+  }
+  const [filas] = await db.query(sql, params);
   return filas[0];
 };
 
-exports.obtenerPorId = async (id) => {
-  const [filas] = await db.query('SELECT * FROM clases WHERE id_clase = ?', [id]);
-  return filas[0];
+// ¿El profesor existe y es de ese gimnasio?
+exports.profesorDelGimnasio = async (idProfesor, idGimnasio) => {
+  const [filas] = await db.query(
+    'SELECT id_profesor FROM profesores WHERE id_profesor = ? AND id_gimnasio = ?',
+    [idProfesor, idGimnasio]
+  );
+  return filas.length > 0;
 };
 
 exports.crear = async (d) => {
   const [r] = await db.query(
     `INSERT INTO clases
-    (nombre_clase, capacidad, fecha_clase, hora_clase, id_gimnasio, profesor_id)
-    VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      d.nombre_clase,
-      d.capacidad,
-      d.fecha_clase,
-      d.hora_clase,
-      d.id_gimnasio,
-      d.profesor_id
-    ]
+       (nombre_clase, capacidad, fecha_clase, hora_clase, id_gimnasio, profesor_id)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [d.nombre_clase, d.capacidad, d.fecha_clase, d.hora_clase,
+     d.id_gimnasio, d.profesor_id ?? null]
   );
-
   return r.insertId;
 };
 
 exports.actualizar = async (id, d, usuario) => {
   let sql = `UPDATE clases
-    SET nombre_clase = ?, capacidad = ?, fecha_clase = ?, hora_clase = ?, profesor_id = ?
-    WHERE id_clase = ?`;
-
-  const params = [
-    d.nombre_clase,
-    d.capacidad,
-    d.fecha_clase,
-    d.hora_clase,
-    d.profesor_id,
-    id
-  ];
-
-  if (usuario.rol === 'superadmin') {
-    sql = `UPDATE clases
-      SET nombre_clase = ?, capacidad = ?, fecha_clase = ?, hora_clase = ?, profesor_id = ?, id_gimnasio = ?
-      WHERE id_clase = ?`;
-
-    params.splice(5, 0, d.id_gimnasio);
-  } else {
-    if (!usuario.id_gimnasio) {
-      throw new Error('El usuario no tiene un gimnasio asignado');
-    }
-
+             SET nombre_clase = ?, capacidad = ?, fecha_clase = ?, hora_clase = ?,
+                 profesor_id = ?
+             WHERE id_clase = ?`;
+  const params = [d.nombre_clase, d.capacidad, d.fecha_clase, d.hora_clase,
+                  d.profesor_id ?? null, id];
+  if (!esSuper(usuario)) {
     sql += ' AND id_gimnasio = ?';
     params.push(usuario.id_gimnasio);
   }
-
   const [r] = await db.query(sql, params);
   return r.affectedRows;
 };
@@ -81,16 +62,10 @@ exports.actualizar = async (id, d, usuario) => {
 exports.eliminar = async (id, usuario) => {
   let sql = 'DELETE FROM clases WHERE id_clase = ?';
   const params = [id];
-
-  if (usuario.rol !== 'superadmin') {
-    if (!usuario.id_gimnasio) {
-      throw new Error('El usuario no tiene un gimnasio asignado');
-    }
-
+  if (!esSuper(usuario)) {
     sql += ' AND id_gimnasio = ?';
     params.push(usuario.id_gimnasio);
   }
-
   const [r] = await db.query(sql, params);
   return r.affectedRows;
 };

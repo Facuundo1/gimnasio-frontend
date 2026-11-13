@@ -95,7 +95,7 @@ export default function AdminClasses() {
       searchText={(c) => `${c.nombre_clase} ${c.profesor ?? ''}`}
       searchPlaceholder="Buscar clase o profesor…"
       emptyText="Todavía no hay clases programadas."
-      deleteMessage={(c) => `Vas a eliminar la clase ${c.nombre_clase}. Se pierden también sus reservas.`}
+      deleteMessage={(c) => `Vas a eliminar la clase ${c.nombre_clase}. Solo se puede eliminar si no tiene reservas.`}
       extraActions={<Link className="btn btn--ghost" to="/admin/profesores">Profesores</Link>}
     />
   );

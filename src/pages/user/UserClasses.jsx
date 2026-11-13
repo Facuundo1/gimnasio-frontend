@@ -26,6 +26,16 @@ function Agenda({ clases, reservas, profesores, usuario, recargar }) {
   const [reservando, setReservando] = useState(null);
   const { pedirCancelar, dialogo } = useCancelarReserva(recargar);
 
+  console.log(
+  'DIAGNOSTICO:',
+  delGimnasio(clases, usuario.id_gimnasio).map((c) => ({
+    nombre: c.nombre_clase,
+    fecha: c.fecha_clase,
+    hora: c.hora_clase,
+    inicio: inicioClase(c),
+    futura: inicioClase(c) >= new Date(),
+  }))
+);
   const ahora = new Date();
   const proximas = delGimnasio(clases, usuario.id_gimnasio)
     .filter((c) => {
