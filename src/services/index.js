@@ -11,7 +11,10 @@ const crud = (recurso) => ({
 
 export const clasesApi = crud('clases');
 export const usuariosApi = crud('usuarios');
-export const productosApi = crud('productos');
+export const productosApi = {
+  ...crud('productos'),
+  descontarStock: (id, cantidad) => api.patch(`/productos/${id}/stock`, { cantidad }),
+};
 export const gimnasiosApi = crud('gimnasio');
 export const membresiasApi = crud('membresias');
 export const profesoresApi = crud('profesores');
@@ -58,3 +61,4 @@ export async function crearUsuarioCompleto({
 
   return respuesta.id;
 }
+

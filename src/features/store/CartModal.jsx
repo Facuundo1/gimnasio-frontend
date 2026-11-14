@@ -28,10 +28,7 @@ export default function CartModal({ open, onClose, onPedidoCreado }) {
         });
         // TODO(backend): el descuento de stock debería hacerlo el servidor al crear el detalle.
         if (producto.stock != null) {
-          await productosApi.actualizar(producto.id_producto, {
-            ...producto,
-            stock: Math.max(0, Number(producto.stock) - cantidad),
-          });
+          await productosApi.descontarStock(producto.id_producto, cantidad);
         }
       }
       vaciar();

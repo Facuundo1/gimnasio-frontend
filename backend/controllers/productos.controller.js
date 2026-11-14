@@ -231,3 +231,21 @@ exports.eliminar = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.descontarStock = async (req, res, next) => {
+  try {
+    const cantidad = Number(req.body.cantidad);
+    if (!Number.isInteger(cantidad) || cantidad <= 0) {
+      return res.status(400).json({ error: 'La cantidad debe ser un entero mayor a cero' });
+    }
+
+    const filas = await Modelo.descontarStock(req.params.id, cantidad, req.usuario);
+    if (!filas) {
+      return res.status(409).json({ error: 'Producto inexistente o sin stock suficiente' });
+    }
+
+    res.json({ mensaje: 'Stock actualizado' });
+  } catch (err) {
+    next(err);
+  }
+};
