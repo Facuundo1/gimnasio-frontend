@@ -10,6 +10,25 @@ import { Async, Badge, Button, Card, EmptyState, PageHeader } from '../../compon
 
 const cargar = () => productosApi.listar();
 
+// Las fotos van en public/productos/ y se llaman <id del producto>.<extensión>
+const EXTENSIONES = ['jpeg', 'png'];
+
+function ImagenProducto({ producto }) {
+  const [intento, setIntento] = useState(0);
+  const agotado = intento >= EXTENSIONES.length;
+  const src = `/productos/${producto.id_producto}.${EXTENSIONES[intento]}`;
+
+  return (
+    <div className="product__img" aria-hidden="true">
+      {agotado ? (
+        producto.nombre_producto.charAt(0)
+      ) : (
+        <img key={src} src={src} alt="" onError={() => setIntento((n) => n + 1)} />
+      )}
+    </div>
+  );
+}
+
 function Catalogo({ productos, usuario }) {
   const { agregar, items, cantidad } = useCart();
   const [busqueda, setBusqueda] = useState('');
@@ -36,7 +55,7 @@ function Catalogo({ productos, usuario }) {
             const sinStock = p.stock != null && Number(p.stock) <= enCarrito(p.id_producto);
             return (
               <Card key={p.id_producto} as="article" flush className="product">
-                <div className="product__img" aria-hidden="true">{p.nombre_producto.charAt(0)}</div>
+                <ImagenProducto producto={p} />
                 <div className="product__body">
                   <h2 className="product__name">{p.nombre_producto}</h2>
                   {p.stock != null && Number(p.stock) <= 5 && (
