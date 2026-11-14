@@ -1,9 +1,14 @@
 const Modelo = require('../models/membresias.model');
 const Usuario = require('../models/usuarios.model');
 
-const OBLIGATORIOS = ["tipo_membresia","id_usuarios"];
+const OBLIGATORIOS = ["tipo_membresia", "id_usuarios"];
+
 const faltantes = (body) =>
   OBLIGATORIOS.filter((c) => body[c] === undefined || body[c] === '');
+
+// Un socio (rol 'usuario') solo puede tocar su propia membresía
+const soloLoSuyo = (req, idUsuario) =>
+  req.usuario.rol !== 'usuario' || Number(idUsuario) === Number(req.usuario.id);
 
 exports.listar = async (req, res, next) => {
   try {
@@ -18,7 +23,6 @@ exports.obtener = async (req, res, next) => {
     res.json(item);
   } catch (err) { next(err); }
 };
-
 
 exports.crear = async (req, res, next) => {
   try {
@@ -58,6 +62,10 @@ exports.crear = async (req, res, next) => {
       return res.status(400).json({
         error: 'La fecha de vencimiento no puede ser anterior a la inscripción'
       });
+    }
+
+    if (!soloLoSuyo(req, req.body.id_usuarios)) {
+      return res.status(403).json({ error: 'Solo podés modificar tu propia membresía' });
     }
 
     const id = await Modelo.crear(req.body);
@@ -108,6 +116,15 @@ exports.actualizar = async (req, res, next) => {
       });
     }
 
+    const actual = await Modelo.obtenerPorId(req.params.id);
+    if (!actual) {
+      return res.status(404).json({ error: 'No encontrado' });
+    }
+
+    if (!soloLoSuyo(req, actual.id_usuarios) || !soloLoSuyo(req, req.body.id_usuarios)) {
+      return res.status(403).json({ error: 'Solo podés modificar tu propia membresía' });
+    }
+
     const filas = await Modelo.actualizar(req.params.id, req.body);
 
     if (!filas) {
@@ -119,11 +136,10 @@ exports.actualizar = async (req, res, next) => {
     next(err);
   }
 };
-
 exports.eliminar = async (req, res, next) => {
   try {
     const filas = await Modelo.eliminar(req.params.id);
     if (!filas) return res.status(404).json({ error: 'No encontrado' });
     res.json({ mensaje: 'Eliminado correctamente' });
   } catch (err) { next(err); }
-};
+}

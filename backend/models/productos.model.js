@@ -95,3 +95,19 @@ exports.eliminar = async (id, usuario) => {
   const [r] = await db.query(sql, params);
   return r.affectedRows;
 };
+
+exports.descontarStock = async (id, cantidad, usuario) => {
+  let sql = 'UPDATE productos SET stock = stock - ? WHERE id_producto = ? AND stock >= ?';
+  const params = [cantidad, id, cantidad];
+
+  if (usuario.rol !== 'superadmin') {
+    if (!usuario.id_gimnasio) {
+      throw new Error('El usuario no tiene un gimnasio asignado');
+    }
+    sql += ' AND id_gimnasio = ?';
+    params.push(usuario.id_gimnasio);
+  }
+
+  const [r] = await db.query(sql, params);
+  return r.affectedRows;
+};
