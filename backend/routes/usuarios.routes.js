@@ -13,7 +13,7 @@ router.get(
 router.get(
   '/:id',
   verificarToken,
-  permitirRoles('admin', 'superadmin'),
+  permitirRoles('usuario', 'admin', 'superadmin'),
   c.obtener
 );
 

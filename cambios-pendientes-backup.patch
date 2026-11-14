@@ -1,0 +1,972 @@
+diff --git a/backend/controllers/clases.controller.js b/backend/controllers/clases.controller.js
+index 73aca4c..aab3b7c 100644
+--- a/backend/controllers/clases.controller.js
++++ b/backend/controllers/clases.controller.js
+@@ -15,6 +15,9 @@ const validar = (b = {}) => {
+       !Number.isInteger(Number(b.capacidad)) || Number(b.capacidad) < 1)
+     errores.push('La capacidad debe ser un número entero mayor a 0');
+ 
++  if (!idValido(b.profesor_id))
++    errores.push('Debe seleccionar un profesor válido');
++
+   if (!FECHA.test(b.fecha_clase || '') || isNaN(Date.parse(b.fecha_clase)))
+     errores.push('La fecha debe tener formato AAAA-MM-DD');
+ 
+@@ -81,31 +84,123 @@ exports.obtener = async (req, res, next) => {
+ 
+ exports.crear = async (req, res, next) => {
+   try {
+-    const errores = validar(req.body);
+-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+-    const id = await Modelo.crear(req.body);
+-    res.status(201).json({ id_clase: id, ...req.body });
+-  } catch (err) { next(err); }
++    const datos = { ...req.body };
++
++    if (req.usuario.rol === 'admin') {
++      if (!req.usuario.id_gimnasio) {
++        return res.status(400).json({
++          error: 'El administrador no tiene un gimnasio asignado'
++        });
++      }
++
++      datos.id_gimnasio = req.usuario.id_gimnasio;
++    }
++
++    if (!datos.id_gimnasio) {
++      return res.status(400).json({
++        error: 'Debe indicar un gimnasio válido'
++      });
++    }
++
++    const errores = validar(datos);
++
++    if (errores.length) {
++      return res.status(400).json({
++        error: errores.join('. ')
++      });
++    }
++
++    const id = await Modelo.crear(datos);
++
++    res.status(201).json({
++      id_clase: id,
++      ...datos
++    });
++
++  } catch (err) {
++    next(err);
++  }
+ };
+ 
+ exports.actualizar = async (req, res, next) => {
+   try {
+-    if (!idValido(req.params.id))
+-      return res.status(400).json({ error: 'El id no es válido' });
+-    const errores = validar(req.body);
+-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+-    const filas = await Modelo.actualizar(req.params.id, req.body);
+-    if (!filas) return res.status(404).json({ error: 'Clase no encontrada' });
+-    res.json({ mensaje: 'Clase actualizada correctamente' });
+-  } catch (err) { next(err); }
++    if (!idValido(req.params.id)) {
++      return res.status(400).json({
++        error: 'El id no es válido'
++      });
++    }
++
++    const datos = { ...req.body };
++
++    if (req.usuario.rol === 'admin') {
++      if (!req.usuario.id_gimnasio) {
++        return res.status(400).json({
++          error: 'El administrador no tiene un gimnasio asignado'
++        });
++      }
++
++      datos.id_gimnasio = req.usuario.id_gimnasio;
++    }
++
++    if (!datos.id_gimnasio) {
++      return res.status(400).json({
++        error: 'Debe indicar un gimnasio válido'
++      });
++    }
++
++    const errores = validar(datos);
++
++    if (errores.length) {
++      return res.status(400).json({
++        error: errores.join('. ')
++      });
++    }
++
++    const filas = await Modelo.actualizar(
++      req.params.id,
++      datos,
++      req.usuario
++    );
++
++    if (!filas) {
++      return res.status(404).json({
++        error: 'Clase no encontrada'
++      });
++    }
++
++    res.json({
++      mensaje: 'Clase actualizada correctamente'
++    });
++
++  } catch (err) {
++    next(err);
++  }
+ };
+ 
+ exports.eliminar = async (req, res, next) => {
+   try {
+-    if (!idValido(req.params.id))
+-      return res.status(400).json({ error: 'El id no es válido' });
+-    const filas = await Modelo.eliminar(req.params.id);
+-    if (!filas) return res.status(404).json({ error: 'Clase no encontrada' });
+-    res.json({ mensaje: 'Clase eliminada correctamente' });
+-  } catch (err) { next(err); }
++    if (!idValido(req.params.id)) {
++      return res.status(400).json({
++        error: 'El id no es válido'
++      });
++    }
++
++    const filas = await Modelo.eliminar(
++      req.params.id,
++      req.usuario
++    );
++
++    if (!filas) {
++      return res.status(404).json({
++        error: 'Clase no encontrada'
++      });
++    }
++
++    res.json({
++      mensaje: 'Clase eliminada correctamente'
++    });
++
++  } catch (err) {
++    next(err);
++  }
+ };
+\ No newline at end of file
+diff --git a/backend/controllers/productos.controller.js b/backend/controllers/productos.controller.js
+index 1c437b0..2b78015 100644
+--- a/backend/controllers/productos.controller.js
++++ b/backend/controllers/productos.controller.js
+@@ -41,23 +41,79 @@ exports.obtener = async (req, res, next) => {
+ 
+ exports.crear = async (req, res, next) => {
+   try {
+-    const errores = validar(req.body);
+-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+-    const id = await Modelo.crear(req.body);
+-    res.status(201).json({ id_producto: id, ...req.body });
+-  } catch (err) { next(err); }
++    const datos = { ...req.body };
++
++    if (req.usuario.rol === 'admin') {
++      if (!req.usuario.id_gimnasio) {
++        return res.status(400).json({
++          error: 'El administrador no tiene un gimnasio asignado'
++        });
++      }
++
++      datos.id_gimnasio = req.usuario.id_gimnasio;
++    }
++
++    const errores = validar(datos);
++    if (errores.length) {
++      return res.status(400).json({ error: errores.join('. ') });
++    }
++
++    if (!datos.id_gimnasio) {
++      return res.status(400).json({
++        error: 'Debe indicar un gimnasio válido'
++      });
++    }
++
++    const id = await Modelo.crear(datos);
++    res.status(201).json({ id_producto: id, ...datos });
++  } catch (err) {
++    next(err);
++  }
+ };
+ 
+ exports.actualizar = async (req, res, next) => {
+   try {
+-    if (!idValido(req.params.id))
++    if (!idValido(req.params.id)) {
+       return res.status(400).json({ error: 'El id no es válido' });
+-    const errores = validar(req.body);
+-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+-    const filas = await Modelo.actualizar(req.params.id, req.body, req.usuario);
+-    if (!filas) return res.status(404).json({ error: 'Producto no encontrado' });
++    }
++
++    const datos = { ...req.body };
++
++    if (req.usuario.rol === 'admin') {
++      if (!req.usuario.id_gimnasio) {
++        return res.status(400).json({
++          error: 'El administrador no tiene un gimnasio asignado'
++        });
++      }
++
++      datos.id_gimnasio = req.usuario.id_gimnasio;
++    }
++
++    const errores = validar(datos);
++    if (errores.length) {
++      return res.status(400).json({ error: errores.join('. ') });
++    }
++
++    if (!datos.id_gimnasio) {
++      return res.status(400).json({
++        error: 'Debe indicar un gimnasio válido'
++      });
++    }
++
++    const filas = await Modelo.actualizar(
++      req.params.id,
++      datos,
++      req.usuario
++    );
++
++    if (!filas) {
++      return res.status(404).json({ error: 'Producto no encontrado' });
++    }
++
+     res.json({ mensaje: 'Producto actualizado correctamente' });
+-  } catch (err) { next(err); }
++  } catch (err) {
++    next(err);
++  }
+ };
+ 
+ exports.eliminar = async (req, res, next) => {
+diff --git a/backend/controllers/reservas.controller.js b/backend/controllers/reservas.controller.js
+index 76e90ee..9931df5 100644
+--- a/backend/controllers/reservas.controller.js
++++ b/backend/controllers/reservas.controller.js
+@@ -1,19 +1,24 @@
++
+ const Modelo = require('../models/reservas.model');
+ const Usuario = require('../models/usuarios.model');
++const Clases = require('../models/clases.model');
++
++const OBLIGATORIOS = ['id_usuarios', 'id_clase'];
+ 
+-const OBLIGATORIOS = ["id_usuarios","id_clase"];
+ const faltantes = (body) =>
+   OBLIGATORIOS.filter((c) => body[c] === undefined || body[c] === '');
+ 
++const esUsuario = (req) => req.usuario.rol === 'usuario';
++
+ // Obtener reservas
+ exports.listar = async (req, res, next) => {
+   try {
+     let reservas;
+ 
+-    if (req.usuario.rol === 'usuario') {
++    if (esUsuario(req)) {
+       reservas = await Modelo.obtenerPorUsuario(req.usuario.id);
+     } else {
+-      reservas = await Modelo.obtenerTodos();
++      reservas = await Modelo.obtenerTodos(req.usuario);
+     }
+ 
+     res.json(reservas);
+@@ -22,6 +27,7 @@ exports.listar = async (req, res, next) => {
+   }
+ };
+ 
++// Obtener una reserva
+ exports.obtener = async (req, res, next) => {
+   try {
+     const reserva = await Modelo.obtenerPorId(req.params.id);
+@@ -32,9 +38,8 @@ exports.obtener = async (req, res, next) => {
+       });
+     }
+ 
+-    // El usuario solo puede consultar su propia reserva
+     if (
+-      req.usuario.rol === 'usuario' &&
++      esUsuario(req) &&
+       Number(reserva.id_usuarios) !== Number(req.usuario.id)
+     ) {
+       return res.status(403).json({
+@@ -42,26 +47,37 @@ exports.obtener = async (req, res, next) => {
+       });
+     }
+ 
+-    res.json(reserva);
++    if (req.usuario.rol === 'admin') {
++      const clase = await Clases.obtenerPorIdYGimnasio(
++        reserva.id_clase,
++        req.usuario.id_gimnasio
++      );
++
++      if (!clase) {
++        return res.status(404).json({
++          error: 'Reserva no encontrada'
++        });
++      }
++    }
+ 
++    res.json(reserva);
+   } catch (err) {
+     next(err);
+   }
+ };
+ 
++// Crear reserva
+ exports.crear = async (req, res, next) => {
+   try {
+     const f = faltantes(req.body);
+ 
+-    // 1. Validar campos obligatorios
+     if (f.length) {
+       return res.status(400).json({
+         error: 'Faltan campos: ' + f.join(', ')
+       });
+     }
+ 
+-    // 2. Identificar al usuario
+-    const idUsuario = req.usuario.rol === 'usuario'
++    const idUsuario = esUsuario(req)
+       ? req.usuario.id
+       : req.body.id_usuarios;
+ 
+@@ -69,11 +85,23 @@ exports.crear = async (req, res, next) => {
+ 
+     if (!usuario) {
+       return res.status(404).json({
+-        error: 'El usuario no existe'
++        error: 'El usuario no existe o no pertenece a tu gimnasio'
++      });
++    }
++
++    const clase = req.usuario.rol === 'superadmin'
++      ? await Clases.obtenerPorId(req.body.id_clase)
++      : await Clases.obtenerPorIdYGimnasio(
++          req.body.id_clase,
++          req.usuario.id_gimnasio
++        );
++
++    if (!clase) {
++      return res.status(404).json({
++        error: 'La clase no existe o no pertenece a tu gimnasio'
+       });
+     }
+ 
+-    // 3. Verificar si la clase tiene cupos disponibles
+     const tieneCupo = await Modelo.tieneCupo(req.body.id_clase);
+ 
+     if (tieneCupo === null) {
+@@ -88,7 +116,6 @@ exports.crear = async (req, res, next) => {
+       });
+     }
+ 
+-    // 4. Verificar si ya tiene una reserva activa
+     const existe = await Modelo.existeReservaActiva(
+       idUsuario,
+       req.body.id_clase
+@@ -100,48 +127,33 @@ exports.crear = async (req, res, next) => {
+       });
+     }
+ 
+-    // 5. Crear la reserva
+     const id = await Modelo.crear({
+-      ...req.body,
+-      id_usuarios: idUsuario
++      id_usuarios: idUsuario,
++      id_clase: req.body.id_clase
+     });
+ 
+     res.status(201).json({
+       id,
+-      ...req.body,
+       id_usuarios: idUsuario,
++      id_clase: req.body.id_clase,
+       estado_reserva: 'Activa'
+     });
+-
+   } catch (err) {
+     next(err);
+   }
+ };
+ 
+-// Actualizar una reserva
++// Actualizar reserva
+ exports.actualizar = async (req, res, next) => {
+   try {
+     const f = faltantes(req.body);
+ 
+-    // Validar campos obligatorios
+     if (f.length) {
+       return res.status(400).json({
+         error: 'Faltan campos: ' + f.join(', ')
+       });
+     }
+-    // Verificar si el usuario existe
+-    const idUsuario = req.usuario.rol === 'usuario'
+-      ? req.usuario.id
+-      : req.body.id_usuarios;
+ 
+-    const usuario = await Usuario.obtenerPorId(idUsuario, req.usuario);
+-
+-    if (!usuario) {
+-      return res.status(404).json({
+-        error: 'El usuario no existe'
+-      });
+-    }
+-    // Verificar si la reserva existe
+     const reserva = await Modelo.obtenerPorId(req.params.id);
+ 
+     if (!reserva) {
+@@ -150,9 +162,8 @@ exports.actualizar = async (req, res, next) => {
+       });
+     }
+ 
+-    // El usuario solo puede modificar su propia reserva
+     if (
+-      req.usuario.rol === 'usuario' &&
++      esUsuario(req) &&
+       Number(reserva.id_usuarios) !== Number(req.usuario.id)
+     ) {
+       return res.status(403).json({
+@@ -160,7 +171,44 @@ exports.actualizar = async (req, res, next) => {
+       });
+     }
+ 
+-    // Verificar si la clase existe y tiene cupos
++    if (req.usuario.rol === 'admin') {
++      const claseActual = await Clases.obtenerPorIdYGimnasio(
++        reserva.id_clase,
++        req.usuario.id_gimnasio
++      );
++
++      if (!claseActual) {
++        return res.status(404).json({
++          error: 'Reserva no encontrada'
++        });
++      }
++    }
++
++    const idUsuario = esUsuario(req)
++      ? req.usuario.id
++      : req.body.id_usuarios;
++
++    const usuario = await Usuario.obtenerPorId(idUsuario, req.usuario);
++
++    if (!usuario) {
++      return res.status(404).json({
++        error: 'El usuario no existe o no pertenece a tu gimnasio'
++      });
++    }
++
++    const clase = req.usuario.rol === 'superadmin'
++      ? await Clases.obtenerPorId(req.body.id_clase)
++      : await Clases.obtenerPorIdYGimnasio(
++          req.body.id_clase,
++          req.usuario.id_gimnasio
++        );
++
++    if (!clase) {
++      return res.status(404).json({
++        error: 'La clase no existe o no pertenece a tu gimnasio'
++      });
++    }
++
+     const tieneCupo = await Modelo.tieneCupo(req.body.id_clase);
+ 
+     if (tieneCupo === null) {
+@@ -169,7 +217,6 @@ exports.actualizar = async (req, res, next) => {
+       });
+     }
+ 
+-    // Si cambia de clase, verificar disponibilidad
+     if (
+       Number(req.body.id_clase) !== Number(reserva.id_clase) &&
+       !tieneCupo
+@@ -191,14 +238,27 @@ exports.actualizar = async (req, res, next) => {
+       });
+     }
+ 
+-    // Actualizar la reserva
+-    const filas = await Modelo.actualizar(req.params.id, req.body);
+-    if (!filas) return res.status(404).json({ error: 'No encontrado' });
+-    res.json({ mensaje: 'Actualizado correctamente' });
+-  } catch (err) { next(err); }
++    const filas = await Modelo.actualizar(req.params.id, {
++      estado_reserva: req.body.estado_reserva || reserva.estado_reserva,
++      id_usuarios: idUsuario,
++      id_clase: req.body.id_clase
++    });
++
++    if (!filas) {
++      return res.status(404).json({
++        error: 'No se pudo actualizar la reserva'
++      });
++    }
++
++    res.json({
++      mensaje: 'Reserva actualizada correctamente'
++    });
++  } catch (err) {
++    next(err);
++  }
+ };
+ 
+-// Cancelar una reserva
++// Cancelar reserva
+ exports.cancelar = async (req, res, next) => {
+   try {
+     const reserva = await Modelo.obtenerPorId(req.params.id);
+@@ -209,9 +269,8 @@ exports.cancelar = async (req, res, next) => {
+       });
+     }
+ 
+-    // El usuario solo puede cancelar su propia reserva
+     if (
+-      req.usuario.rol === 'usuario' &&
++      esUsuario(req) &&
+       Number(reserva.id_usuarios) !== Number(req.usuario.id)
+     ) {
+       return res.status(403).json({
+@@ -219,6 +278,19 @@ exports.cancelar = async (req, res, next) => {
+       });
+     }
+ 
++    if (req.usuario.rol === 'admin') {
++      const clase = await Clases.obtenerPorIdYGimnasio(
++        reserva.id_clase,
++        req.usuario.id_gimnasio
++      );
++
++      if (!clase) {
++        return res.status(404).json({
++          error: 'Reserva no encontrada'
++        });
++      }
++    }
++
+     const filas = await Modelo.cancelar(req.params.id);
+ 
+     if (!filas) {
+@@ -230,24 +302,47 @@ exports.cancelar = async (req, res, next) => {
+     res.json({
+       mensaje: 'Reserva cancelada correctamente'
+     });
+-
+   } catch (err) {
+     next(err);
+   }
+ };
+ 
+-// Eliminar una reserva definitivamente
++// Eliminar definitivamente
+ exports.eliminar = async (req, res, next) => {
+   try {
++    const reserva = await Modelo.obtenerPorId(req.params.id);
++
++    if (!reserva) {
++      return res.status(404).json({
++        error: 'Reserva no encontrada'
++      });
++    }
++
++    if (req.usuario.rol === 'admin') {
++      const clase = await Clases.obtenerPorIdYGimnasio(
++        reserva.id_clase,
++        req.usuario.id_gimnasio
++      );
++
++      if (!clase) {
++        return res.status(404).json({
++          error: 'Reserva no encontrada'
++        });
++      }
++    }
++
+     const filas = await Modelo.eliminar(req.params.id);
+-    if (!filas) return res.status(404).json({ error: 'No encontrado' });
+-    res.json({ mensaje: 'Eliminado correctamente' });
+-  } catch (err) { next(err); }
++
++    if (!filas) {
++      return res.status(404).json({
++        error: 'No se pudo eliminar la reserva'
++      });
++    }
++
++    res.json({
++      mensaje: 'Reserva eliminada correctamente'
++    });
++  } catch (err) {
++    next(err);
++  }
+ };
+-exports.obtenerPorUsuario = async (idUsuario) => {
+-  const [filas] = await db.query(
+-    'SELECT * FROM reservas WHERE id_usuarios = ?',
+-    [idUsuario]
+-  );
+-  return filas;
+-};
+\ No newline at end of file
+diff --git a/backend/models/clases.model.js b/backend/models/clases.model.js
+index 28f8d62..5af2f57 100644
+--- a/backend/models/clases.model.js
++++ b/backend/models/clases.model.js
+@@ -28,21 +28,68 @@ exports.obtenerPorId = async (id) => {
+ 
+ exports.crear = async (d) => {
+   const [r] = await db.query(
+-    'INSERT INTO clases (nombre_clase, capacidad, fecha_clase, hora_clase, id_gimnasio) VALUES (?, ?, ?, ?, ?)',
+-    [d.nombre_clase, d.capacidad, d.fecha_clase, d.hora_clase, d.id_gimnasio]
++    `INSERT INTO clases
++    (nombre_clase, capacidad, fecha_clase, hora_clase, id_gimnasio, profesor_id)
++    VALUES (?, ?, ?, ?, ?, ?)`,
++    [
++      d.nombre_clase,
++      d.capacidad,
++      d.fecha_clase,
++      d.hora_clase,
++      d.id_gimnasio,
++      d.profesor_id
++    ]
+   );
++
+   return r.insertId;
+ };
+ 
+-exports.actualizar = async (id, d) => {
+-  const [r] = await db.query(
+-    'UPDATE clases SET nombre_clase = ?, capacidad = ?, fecha_clase = ?, hora_clase = ?, id_gimnasio = ? WHERE id_clase = ?',
+-    [d.nombre_clase, d.capacidad, d.fecha_clase, d.hora_clase, d.id_gimnasio, id]
+-  );
++exports.actualizar = async (id, d, usuario) => {
++  let sql = `UPDATE clases
++    SET nombre_clase = ?, capacidad = ?, fecha_clase = ?, hora_clase = ?, profesor_id = ?
++    WHERE id_clase = ?`;
++
++  const params = [
++    d.nombre_clase,
++    d.capacidad,
++    d.fecha_clase,
++    d.hora_clase,
++    d.profesor_id,
++    id
++  ];
++
++  if (usuario.rol === 'superadmin') {
++    sql = `UPDATE clases
++      SET nombre_clase = ?, capacidad = ?, fecha_clase = ?, hora_clase = ?, profesor_id = ?, id_gimnasio = ?
++      WHERE id_clase = ?`;
++
++    params.splice(5, 0, d.id_gimnasio);
++  } else {
++    if (!usuario.id_gimnasio) {
++      throw new Error('El usuario no tiene un gimnasio asignado');
++    }
++
++    sql += ' AND id_gimnasio = ?';
++    params.push(usuario.id_gimnasio);
++  }
++
++  const [r] = await db.query(sql, params);
+   return r.affectedRows;
+ };
+ 
+-exports.eliminar = async (id) => {
+-  const [r] = await db.query('DELETE FROM clases WHERE id_clase = ?', [id]);
++exports.eliminar = async (id, usuario) => {
++  let sql = 'DELETE FROM clases WHERE id_clase = ?';
++  const params = [id];
++
++  if (usuario.rol !== 'superadmin') {
++    if (!usuario.id_gimnasio) {
++      throw new Error('El usuario no tiene un gimnasio asignado');
++    }
++
++    sql += ' AND id_gimnasio = ?';
++    params.push(usuario.id_gimnasio);
++  }
++
++  const [r] = await db.query(sql, params);
+   return r.affectedRows;
+-};
++};
+\ No newline at end of file
+diff --git a/backend/models/productos.model.js b/backend/models/productos.model.js
+index bb6259f..2ef2bbf 100644
+--- a/backend/models/productos.model.js
++++ b/backend/models/productos.model.js
+@@ -50,18 +50,23 @@ exports.crear = async (d) => {
+ 
+ exports.actualizar = async (id, d, usuario) => {
+   let sql = `UPDATE productos
+-    SET nombre_producto = ?, precio_producto = ?, stock = ?, id_gimnasio = ?
++    SET nombre_producto = ?, precio_producto = ?, stock = ?
+     WHERE id_producto = ?`;
+ 
+   const params = [
+     d.nombre_producto,
+     d.precio_producto,
+     d.stock,
+-    d.id_gimnasio,
+     id
+   ];
+ 
+-  if (usuario.rol !== 'superadmin') {
++  if (usuario.rol === 'superadmin') {
++    sql = `UPDATE productos
++      SET nombre_producto = ?, precio_producto = ?, stock = ?, id_gimnasio = ?
++      WHERE id_producto = ?`;
++
++    params.splice(3, 0, d.id_gimnasio);
++  } else {
+     if (!usuario.id_gimnasio) {
+       throw new Error('El usuario no tiene un gimnasio asignado');
+     }
+diff --git a/backend/models/reservas.model.js b/backend/models/reservas.model.js
+index 10ab2bb..ccd70ce 100644
+--- a/backend/models/reservas.model.js
++++ b/backend/models/reservas.model.js
+@@ -1,14 +1,40 @@
++
+ const db = require('../db');
+ 
+-exports.obtenerTodos = async () => {
+-  const [filas] = await db.query('SELECT * FROM reservas');
++// Obtener todas las reservas.
++// Superadmin: todas.
++// Admin: solamente las de su gimnasio.
++exports.obtenerTodos = async (usuario) => {
++  let sql = `
++    SELECT r.*
++    FROM reservas r
++    INNER JOIN clases c ON r.id_clase = c.id_clase
++  `;
++  const params = [];
++
++  if (usuario.rol !== 'superadmin') {
++    if (!usuario.id_gimnasio) {
++      throw new Error('El usuario no tiene un gimnasio asignado');
++    }
++
++    sql += ' WHERE c.id_gimnasio = ?';
++    params.push(usuario.id_gimnasio);
++  }
++
++  const [filas] = await db.query(sql, params);
+   return filas;
+ };
+ 
++// Obtener una reserva por ID.
+ exports.obtenerPorId = async (id) => {
+-  const [filas] = await db.query('SELECT * FROM reservas WHERE id_reserva = ?', [id]);
++  const [filas] = await db.query(
++    'SELECT * FROM reservas WHERE id_reserva = ?',
++    [id]
++  );
+   return filas[0];
+ };
++
++// Obtener reservas de un usuario.
+ exports.obtenerPorUsuario = async (idUsuario) => {
+   const [filas] = await db.query(
+     'SELECT * FROM reservas WHERE id_usuarios = ?',
+@@ -17,59 +43,98 @@ exports.obtenerPorUsuario = async (idUsuario) => {
+   return filas;
+ };
+ 
++// Comprobar si existe una reserva activa.
+ exports.existeReservaActiva = async (idUsuario, idClase) => {
+   const [filas] = await db.query(
+     `SELECT id_reserva
+-    FROM reservas
+-    WHERE id_usuarios = ?
+-    AND id_clase = ?
+-    AND estado_reserva = 'Activa'`,
++     FROM reservas
++     WHERE id_usuarios = ?
++     AND id_clase = ?
++     AND estado_reserva = 'Activa'`,
+     [idUsuario, idClase]
+   );
+ 
+   return filas.length > 0;
+ };
+ 
++// Comprobar otra reserva activa al actualizar.
++exports.existeOtraReservaActiva = async (idUsuario, idClase, idReserva) => {
++  const [filas] = await db.query(
++    `SELECT id_reserva
++     FROM reservas
++     WHERE id_usuarios = ?
++     AND id_clase = ?
++     AND estado_reserva = 'Activa'
++     AND id_reserva != ?`,
++    [idUsuario, idClase, idReserva]
++  );
++
++  return filas.length > 0;
++};
++
++// Comprobar disponibilidad de cupos.
+ exports.tieneCupo = async (idClase) => {
+   const [filas] = await db.query(
+     `SELECT
+-      c.capacidad,
+-      COUNT(r.id_reserva) AS reservas_activas
+-    FROM clases c
+-    LEFT JOIN reservas r
+-      ON c.id_clase = r.id_clase
+-      AND r.estado_reserva = 'Activa'
+-    WHERE c.id_clase = ?
+-    GROUP BY c.id_clase, c.capacidad`,
++       c.capacidad,
++       COUNT(r.id_reserva) AS reservas_activas
++     FROM clases c
++     LEFT JOIN reservas r
++       ON c.id_clase = r.id_clase
++       AND r.estado_reserva = 'Activa'
++     WHERE c.id_clase = ?
++     GROUP BY c.id_clase, c.capacidad`,
+     [idClase]
+   );
+ 
+-  // Si la clase no existe, devuelve null
+-  if (filas.length === 0) {
+-    return null;
+-  }
++  if (filas.length === 0) return null;
+ 
+-  // Si existe, comprueba si quedan lugares
+-  return filas[0].reservas_activas < filas[0].capacidad;
++  return Number(filas[0].reservas_activas) < Number(filas[0].capacidad);
+ };
+ 
++// Crear reserva.
+ exports.crear = async (d) => {
+   const [r] = await db.query(
+-    'INSERT INTO reservas (estado_reserva, id_usuarios, id_clase) VALUES (?, ?, ?)',
+-    [d.estado_reserva, d.id_usuarios, d.id_clase]
++    `INSERT INTO reservas
++     (estado_reserva, id_usuarios, id_clase)
++     VALUES (?, ?, ?)`,
++    ['Activa', d.id_usuarios, d.id_clase]
+   );
++
+   return r.insertId;
+ };
+ 
++// Actualizar reserva.
+ exports.actualizar = async (id, d) => {
+   const [r] = await db.query(
+-    'UPDATE reservas SET estado_reserva = ?, id_usuarios = ?, id_clase = ? WHERE id_reserva = ?',
++    `UPDATE reservas
++     SET estado_reserva = ?, id_usuarios = ?, id_clase = ?
++     WHERE id_reserva = ?`,
+     [d.estado_reserva, d.id_usuarios, d.id_clase, id]
+   );
++
+   return r.affectedRows;
+ };
+ 
++// Cancelar reserva.
++exports.cancelar = async (id) => {
++  const [r] = await db.query(
++    `UPDATE reservas
++     SET estado_reserva = 'Cancelada'
++     WHERE id_reserva = ?
++     AND estado_reserva = 'Activa'`,
++    [id]
++  );
++
++  return r.affectedRows;
++};
++
++// Eliminar definitivamente.
+ exports.eliminar = async (id) => {
+-  const [r] = await db.query('DELETE FROM reservas WHERE id_reserva = ?', [id]);
++  const [r] = await db.query(
++    'DELETE FROM reservas WHERE id_reserva = ?',
++    [id]
++  );
++
+   return r.affectedRows;
+ };
+diff --git a/backend/routes/reservas.routes.js b/backend/routes/reservas.routes.js
+index b814021..1589054 100644
+--- a/backend/routes/reservas.routes.js
++++ b/backend/routes/reservas.routes.js
+@@ -3,21 +3,47 @@ const c = require('../controllers/reservas.controller');
+ const { verificarToken, permitirRoles } = require('../middleware/auth');
+ 
+ router.use(verificarToken);
+-// Consultas: cada usuario ve sus propias reservas
+-router.get('/', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.listar);
+ 
+-router.get('/:id', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.obtener);
++// Consultar reservas
++router.get(
++  '/',
++  permitirRoles('usuario', 'admin', 'superadmin'),
++  c.listar
++);
+ 
+-// Crear reservas
+-router.post('/', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.crear);
++// Consultar una reserva
++router.get(
++  '/:id',
++  permitirRoles('usuario', 'admin', 'superadmin'),
++  c.obtener
++);
+ 
+-// Modificar reservas
+-router.put('/:id', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.actualizar);
++// Crear reserva
++router.post(
++  '/',
++  permitirRoles('usuario', 'admin', 'superadmin'),
++  c.crear
++);
+ 
+-// Cancelar reservas
+-router.patch('/:id/cancelar', verificarToken, permitirRoles('usuario', 'admin', 'superadmin'), c.cancelar);
++// Actualizar reserva
++router.put(
++  '/:id',
++  permitirRoles('usuario', 'admin', 'superadmin'),
++  c.actualizar
++);
+ 
+-// Eliminar: administradores
+-router.delete('/:id', verificarToken, permitirRoles('admin', 'superadmin'), c.eliminar);
++// Cancelar reserva
++router.patch(
++  '/:id/cancelar',
++  permitirRoles('usuario', 'admin', 'superadmin'),
++  c.cancelar
++);
++
++// Eliminar definitivamente
++router.delete(
++  '/:id',
++  permitirRoles('admin', 'superadmin'),
++  c.eliminar
++);
+ 
+ module.exports = router;
+\ No newline at end of file

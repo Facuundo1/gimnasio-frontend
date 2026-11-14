@@ -17,6 +17,10 @@ const DIAS = [
 ];
 
 function Agenda({ clases, reservas, profesores, usuario, recargar }) {
+  console.log('USUARIO:', usuario);
+  console.log('CLASES RECIBIDAS:', clases);
+  console.log('GIMNASIO USUARIO:', usuario.id_gimnasio);
+  console.log('CLASES FILTRADAS:', delGimnasio(clases, usuario.id_gimnasio));
   const toast = useToast();
   const [dia, setDia] = useState(() => new Date().getDay());
   const [reservando, setReservando] = useState(null);
@@ -29,7 +33,15 @@ function Agenda({ clases, reservas, profesores, usuario, recargar }) {
       return inicio && inicio >= ahora;
     })
     .sort((a, b) => inicioClase(a) - inicioClase(b));
-
+  console.log(
+    'CLASES FUTURAS:',
+    proximas.map((c) => ({
+      nombre: c.nombre_clase,
+      fecha: c.fecha_clase,
+      hora: c.hora_clase,
+      inicio: inicioClase(c),
+    }))
+  );
   const delDia = (d) => proximas.filter((c) => parseFecha(c.fecha_clase).getDay() === d);
   const tabs = DIAS.map((d) => ({ ...d, count: delDia(d.value).length || undefined }));
   const visibles = delDia(dia);

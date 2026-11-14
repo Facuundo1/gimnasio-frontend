@@ -37,14 +37,24 @@ export const sistemaApi = {
  * TODO(backend): POST /usuarios guarda la contraseña sin hashear, así que se crea
  * con /auth/registro (que hashea) y después se completan rol, teléfono y gimnasio.
  */
-export async function crearUsuarioCompleto({ nombre, apellido, correo, password, telefono, rol, id_gimnasio }) {
-  const { usuario } = await authApi.registro({ nombre, apellido, correo, password });
-  const fila = await usuariosApi.obtener(usuario.id);
-  await usuariosApi.actualizar(usuario.id, {
-    ...fila,
+export async function crearUsuarioCompleto({
+  nombre,
+  apellido,
+  correo,
+  password,
+  telefono,
+  rol,
+  id_gimnasio
+}) {
+  const respuesta = await usuariosApi.crear({
+    nombre_usuarios: nombre,
+    apellido_usuarios: apellido,
+    correo_usuarios: correo,
+    contrasenia_usuarios: password,
     telefono: telefono || null,
     rol: ROL_EN_BD[rol],
     id_gimnasio: id_gimnasio ?? null,
   });
-  return usuario.id;
+
+  return respuesta.id;
 }

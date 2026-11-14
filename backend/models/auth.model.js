@@ -8,12 +8,13 @@ exports.buscarPorCorreo = async (correo) => {
   return filas[0];
 };
 
-exports.crear = async ({ nombre, apellido, correo, hash }) => {
+exports.crear = async ({ nombre, apellido, correo, hash, id_gimnasio }) => {
   const [r] = await db.query(
     `INSERT INTO usuarios
-      (nombre_usuarios, apellido_usuarios, correo_usuarios, contrasenia_usuarios)
-     VALUES (?, ?, ?, ?)`,
-    [nombre, apellido, correo, hash]
+      (nombre_usuarios, apellido_usuarios, correo_usuarios,
+       contrasenia_usuarios, id_gimnasio)
+     VALUES (?, ?, ?, ?, ?)`,
+    [nombre, apellido, correo, hash, id_gimnasio]
   );
   return r.insertId;
-}
+};

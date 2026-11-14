@@ -50,18 +50,23 @@ exports.crear = async (d) => {
 
 exports.actualizar = async (id, d, usuario) => {
   let sql = `UPDATE productos
-    SET nombre_producto = ?, precio_producto = ?, stock = ?, id_gimnasio = ?
+    SET nombre_producto = ?, precio_producto = ?, stock = ?
     WHERE id_producto = ?`;
 
   const params = [
     d.nombre_producto,
     d.precio_producto,
     d.stock,
-    d.id_gimnasio,
     id
   ];
 
-  if (usuario.rol !== 'superadmin') {
+  if (usuario.rol === 'superadmin') {
+    sql = `UPDATE productos
+      SET nombre_producto = ?, precio_producto = ?, stock = ?, id_gimnasio = ?
+      WHERE id_producto = ?`;
+
+    params.splice(3, 0, d.id_gimnasio);
+  } else {
     if (!usuario.id_gimnasio) {
       throw new Error('El usuario no tiene un gimnasio asignado');
     }
