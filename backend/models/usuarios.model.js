@@ -58,13 +58,13 @@ exports.crear = async (d) => {
 exports.actualizar = async (id, d, usuario) => {
   let sql = `
     UPDATE usuarios
-    SET contrasenia_usuarios = ?, nombre_usuarios = ?,
+    SET contrasenia_usuarios = COALESCE(?, contrasenia_usuarios), nombre_usuarios = ?,
         apellido_usuarios = ?, correo_usuarios = ?,
         telefono = ?, rol = ?, id_gimnasio = ?
     WHERE id_usuarios = ?
   `;
   const params = [
-    d.contrasenia_usuarios,
+    d.contrasenia_usuarios ?? null,
     d.nombre_usuarios,
     d.apellido_usuarios,
     d.correo_usuarios,
